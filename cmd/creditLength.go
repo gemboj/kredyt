@@ -1,11 +1,17 @@
 package main
 
+import "github.com/shopspring/decimal"
+
 type CreditLength struct {
 	months int
 }
 
 func (cl CreditLength) Months() int {
 	return cl.months
+}
+
+func (cl CreditLength) MonthsDecimal() decimal.Decimal {
+	return decimal.NewFromInt(int64(cl.months))
 }
 
 func (cl CreditLength) Years() int {

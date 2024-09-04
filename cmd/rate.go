@@ -1,13 +1,15 @@
 package main
 
+import "github.com/shopspring/decimal"
+
 type Rate struct {
-	Value                   float64
-	CapitalCurrentMonth     float64
-	Overpaid                float64
-	ConstRateCurrentMonth   float64
-	InterestCurrentMonth    float64
+	Value                   decimal.Decimal
+	CapitalCurrentMonth     decimal.Decimal
+	Overpaid                decimal.Decimal
+	ConstRateCurrentMonth   decimal.Decimal
+	InterestCurrentMonth    decimal.Decimal
 	CurrentMonth            int
-	TotalCapitalPaid        float64
-	TotalInterestPaid       float64
-	RemainingCreditToBePaid float64
+	TotalCapitalPaid        decimal.Decimal
+	TotalInterestPaid       decimal.Decimal
+	RemainingCreditToBePaid decimal.Decimal
 }

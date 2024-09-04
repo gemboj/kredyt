@@ -3,30 +3,31 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"math"
+
+	"github.com/shopspring/decimal"
 )
 
 type RateChange struct {
-	yearPercent float64
+	yearPercent decimal.Decimal
 	sinceMonth  int
 }
 
 var rateChanges = []RateChange{
 	{
-		yearPercent: 0.067,
+		yearPercent: decimal.NewFromFloat(0.067),
 		sinceMonth:  0,
 	},
 	{
-		yearPercent: 0.0766,
+		yearPercent: decimal.NewFromFloat(0.0766),
 		sinceMonth:  60,
 	},
 }
 
 func main() {
-	credit := float64(330000)
+	credit := decimal.NewFromInt(330000)
 	cl := NewCreditLengthFromYears(7)
 	//overpay := overPayFlatTotal(5000)
-	overpay := overPayConst(0)
+	overpay := overPayConst(decimal.NewFromInt(0))
 
 	var rates []Rate
 
@@ -54,8 +55,8 @@ func main() {
 
 	//fmt.Printf("Kwota kredytu: %v\n", credit)
 	//fmt.Printf("Rata stala: %v\n", constInstallmentValue)
-	//fmt.Printf("Koszt Kredytu: %v\n", constInstallmentValue*float64(cl.Months())-credit)
-	//fmt.Printf("Laczna kwota do splaty: %v\n", constInstallmentValue*float64(credit))
+	//fmt.Printf("Koszt Kredytu: %v\n", constInstallmentValue*decimal.Decimal(cl.Months())-credit)
+	//fmt.Printf("Laczna kwota do splaty: %v\n", constInstallmentValue*decimal.Decimal(credit))
 
 	//startTop := 59
 	//top := 3
@@ -63,35 +64,35 @@ func main() {
 	//	top = len(installments)
 	//}
 	ratesJson, _ := json.MarshalIndent(ratesSummary, "", "  ")
-	fmt.Printf("Lista Rat: %v\n", string(ratesJson))
+	fmt.Printf("RateList: %v\n", string(ratesJson))
 }
 
 type RateValue struct {
-	Value      float64
+	Value      decimal.Decimal
 	SinceMonth int
 }
 
-func overPayConst(c float64) func(float64, float64) float64 {
-	return func(capital, _ float64) float64 {
-		return capital + c
+func overPayConst(c decimal.Decimal) func(decimal.Decimal, decimal.Decimal) decimal.Decimal {
+	return func(capital, _ decimal.Decimal) decimal.Decimal {
+		return capital.Add(c)
 	}
 }
 
-func overPayFlatTotal(flatTotal float64) func(float64, float64) float64 {
-	return func(capital, interest float64) float64 {
-		if flatTotal < interest {
+func overPayFlatTotal(flatTotal decimal.Decimal) func(decimal.Decimal, decimal.Decimal) decimal.Decimal {
+	return func(capital, interest decimal.Decimal) decimal.Decimal {
+		if flatTotal.LessThan(interest) {
 			return interest
 		}
 
-		return flatTotal - interest
+		return flatTotal.Sub(interest)
 	}
 }
 
-func listRatesWithConstant(initialConstantRateValue RateValue, credit float64, cl CreditLength, overpay func(float64, float64) float64) []Rate {
+func listRatesWithConstant(initialConstantRateValue RateValue, credit decimal.Decimal, cl CreditLength, overpay func(decimal.Decimal, decimal.Decimal) decimal.Decimal) []Rate {
 	constantRateValue := initialConstantRateValue
 	remainingCreditToBePaid := credit
 
-	var totalCapitalPaid, totalInterestPaid float64
+	var totalCapitalPaid, totalInterestPaid decimal.Decimal
 
 	var rates []Rate
 
@@ -106,25 +107,25 @@ func listRatesWithConstant(initialConstantRateValue RateValue, credit float64, c
 		}
 
 		interest := currentInterest(remainingCreditToBePaid, rateChange.yearPercent)
-		capital := round2(constantRateValue.Value - interest)
+		capital := constantRateValue.Value.Sub(interest)
 		capitalPaid := overpay(capital, interest)
 
-		if capitalPaid > remainingCreditToBePaid {
+		if capitalPaid.GreaterThan(remainingCreditToBePaid) {
 			capitalPaid = remainingCreditToBePaid
 		}
 
-		totalCapitalPaid += capitalPaid
-		totalInterestPaid += interest
+		totalCapitalPaid = totalCapitalPaid.Add(capitalPaid)
+		totalInterestPaid = totalInterestPaid.Add(interest)
 
-		remainingCreditToBePaid = credit - totalCapitalPaid
+		remainingCreditToBePaid = credit.Sub(totalCapitalPaid)
 
-		overpaid := capitalPaid + interest - constantRateValue.Value
-		if overpaid < 0 {
-			overpaid = 0
+		overpaid := capitalPaid.Add(interest).Sub(constantRateValue.Value)
+		if overpaid.LessThan(decimal.NewFromInt(0)) {
+			overpaid = decimal.Zero
 		}
 
 		rates = append(rates, Rate{
-			Value:                   capitalPaid + interest,
+			Value:                   capitalPaid.Add(interest),
 			Overpaid:                overpaid,
 			CapitalCurrentMonth:     capitalPaid,
 			InterestCurrentMonth:    interest,
@@ -135,7 +136,7 @@ func listRatesWithConstant(initialConstantRateValue RateValue, credit float64, c
 			RemainingCreditToBePaid: remainingCreditToBePaid,
 		})
 
-		if remainingCreditToBePaid <= 0.01 {
+		if remainingCreditToBePaid.LessThanOrEqual(decimal.NewFromFloat(0.01)) {
 			break
 		}
 	}
@@ -143,10 +144,10 @@ func listRatesWithConstant(initialConstantRateValue RateValue, credit float64, c
 	return rates
 }
 
-func listRatesWithDecreasing(initialCapitalValue float64, credit float64, cl CreditLength, overpay func(float64, float64) float64) []Rate {
+func listRatesWithDecreasing(initialCapitalValue decimal.Decimal, credit decimal.Decimal, cl CreditLength, overpay func(decimal.Decimal, decimal.Decimal) decimal.Decimal) []Rate {
 	remainingCreditToBePaid := credit
 
-	var totalCapitalPaid, totalInterestPaid float64
+	var totalCapitalPaid, totalInterestPaid decimal.Decimal
 
 	var rates []Rate
 
@@ -157,22 +158,22 @@ func listRatesWithDecreasing(initialCapitalValue float64, credit float64, cl Cre
 		capital := initialCapitalValue
 		capitalPaid := overpay(capital, interest)
 
-		if capitalPaid > remainingCreditToBePaid {
+		if capitalPaid.GreaterThan(remainingCreditToBePaid) {
 			capitalPaid = remainingCreditToBePaid
 		}
 
-		totalCapitalPaid += capitalPaid
-		totalInterestPaid += interest
+		totalCapitalPaid = totalCapitalPaid.Add(capitalPaid)
+		totalInterestPaid = totalInterestPaid.Add(interest)
 
-		remainingCreditToBePaid = credit - totalCapitalPaid
+		remainingCreditToBePaid = credit.Sub(totalCapitalPaid)
 
-		overpaid := capitalPaid - initialCapitalValue
-		if overpaid < 0 {
-			overpaid = 0
+		overpaid := capitalPaid.Sub(initialCapitalValue)
+		if overpaid.LessThan(decimal.Zero) {
+			overpaid = decimal.Zero
 		}
 
 		rates = append(rates, Rate{
-			Value:                   capitalPaid + interest,
+			Value:                   capitalPaid.Add(interest),
 			Overpaid:                overpaid,
 			CapitalCurrentMonth:     capitalPaid,
 			InterestCurrentMonth:    interest,
@@ -182,7 +183,7 @@ func listRatesWithDecreasing(initialCapitalValue float64, credit float64, cl Cre
 			RemainingCreditToBePaid: remainingCreditToBePaid,
 		})
 
-		if remainingCreditToBePaid <= 0.01 {
+		if remainingCreditToBePaid.LessThanOrEqual(decimal.NewFromFloat(0.01)) {
 			break
 		}
 	}
@@ -200,22 +201,30 @@ func findCurrentRateChange(month int) RateChange {
 	return RateChange{}
 }
 
-func decreasingRateValue(credit, yearPercent float64, cl CreditLength) float64 {
-	return round2(credit * yearPercent / (12 * (1 - math.Pow(12/(12+yearPercent), float64(cl.Months())))))
+func decreasingRateValue(credit, yearPercent decimal.Decimal, cl CreditLength) decimal.Decimal {
+	return credit.
+		Mul(yearPercent).
+		Div(
+			decimal.NewFromInt(12).
+				Mul(
+					decimal.NewFromInt(1).
+						Sub(
+							decimal.NewFromInt(12).
+								Div(decimal.NewFromInt(12).Add(yearPercent)).
+								Pow(cl.MonthsDecimal()),
+						),
+				),
+		)
 }
 
-func constRateValue(credit, yearPercent float64, cl CreditLength) float64 {
-	return round2(credit * yearPercent / (12 * (1 - math.Pow(12/(12+yearPercent), float64(cl.Months())))))
+func constRateValue(credit, yearPercent decimal.Decimal, cl CreditLength) decimal.Decimal {
+	return credit.Mul(yearPercent).Div(decimal.NewFromInt(12).Mul(decimal.NewFromInt(1).Sub(decimal.NewFromInt(12).Div((yearPercent.Add(decimal.NewFromInt(12)))).Pow(cl.MonthsDecimal()))))
 }
 
-func constantCreditValue(v float64, cl CreditLength) float64 {
-	return round2(v / float64(cl.Months()))
+func constantCreditValue(v decimal.Decimal, cl CreditLength) decimal.Decimal {
+	return v.Div(cl.MonthsDecimal())
 }
 
-func currentInterest(v, yearPercent float64) float64 {
-	return round2(v * yearPercent / 12)
-}
-
-func round2(v float64) float64 {
-	return math.Round(v*100) / 100
+func currentInterest(v, yearPercent decimal.Decimal) decimal.Decimal {
+	return v.Mul(yearPercent).Div(decimal.NewFromInt(12))
 }
