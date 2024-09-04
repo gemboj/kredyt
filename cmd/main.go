@@ -24,7 +24,7 @@ var rateChanges = []RateChange{
 
 func main() {
 	credit := float64(330000)
-	cl := NewCreditLengthFromYears(20)
+	cl := NewCreditLengthFromYears(7)
 	//overpay := overPayFlatTotal(5000)
 	overpay := overPayConst(0)
 
@@ -33,8 +33,8 @@ func main() {
 	//constRateValue := constRateValue(credit, rateChanges[0].yearPercent, cl)
 	//periodRates := listRatesWithConstant(RateValue{Value: constRateValue, SinceMonth: rateChanges[0].sinceMonth}, credit, cl, overpay)
 
-	constRateValue := currentInterest(credit, rateChanges[0].yearPercent)
-	periodRates := listRatesWithConstant(RateValue{Value: constRateValue, SinceMonth: rateChanges[0].sinceMonth}, credit, cl, overpay)
+	constCreditValue := constantCreditValue(credit, cl)
+	periodRates := listRatesWithDecreasing(constCreditValue, credit, cl, overpay)
 
 	rates = append(rates, periodRates...)
 
@@ -96,10 +96,8 @@ func listRatesWithConstant(initialConstantRateValue RateValue, credit float64, c
 	var rates []Rate
 
 	for i := 0; i < cl.Months(); i++ {
-
 		rateChange := findCurrentRateChange(i)
 
-		remainingCreditToBePaid * rateChange.yearPercent
 		if constantRateValue.SinceMonth != rateChange.sinceMonth {
 			constantRateValue = RateValue{
 				Value:      constRateValue(remainingCreditToBePaid, rateChange.yearPercent, cl.AddMonths(-rateChange.sinceMonth)),
@@ -168,7 +166,7 @@ func listRatesWithDecreasing(initialCapitalValue float64, credit float64, cl Cre
 
 		remainingCreditToBePaid = credit - totalCapitalPaid
 
-		overpaid := capitalPaid + interest - constantRateValue.Value
+		overpaid := capitalPaid - initialCapitalValue
 		if overpaid < 0 {
 			overpaid = 0
 		}
@@ -178,7 +176,6 @@ func listRatesWithDecreasing(initialCapitalValue float64, credit float64, cl Cre
 			Overpaid:                overpaid,
 			CapitalCurrentMonth:     capitalPaid,
 			InterestCurrentMonth:    interest,
-			ConstRateCurrentMonth:   constantRateValue.Value,
 			CurrentMonth:            i,
 			TotalCapitalPaid:        totalCapitalPaid,
 			TotalInterestPaid:       totalInterestPaid,
@@ -209,6 +206,10 @@ func decreasingRateValue(credit, yearPercent float64, cl CreditLength) float64 {
 
 func constRateValue(credit, yearPercent float64, cl CreditLength) float64 {
 	return round2(credit * yearPercent / (12 * (1 - math.Pow(12/(12+yearPercent), float64(cl.Months())))))
+}
+
+func constantCreditValue(v float64, cl CreditLength) float64 {
+	return round2(v / float64(cl.Months()))
 }
 
 func currentInterest(v, yearPercent float64) float64 {
