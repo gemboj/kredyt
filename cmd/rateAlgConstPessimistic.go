@@ -5,32 +5,32 @@ import "github.com/shopspring/decimal"
 type RateAlgorithmConstantPessimistic struct {
 }
 
-func (r RateAlgorithmConstantPessimistic) calculate(month int, loan Loan, overpay Overpay, savings SavingsAlgorithm, rateSummaries []RateSummary) RateSummary {
-	interestRate := loan.FindCurrentInterestRate(month)
+func (r RateAlgorithmConstantPessimistic) calculate(month int, scenario ScenarioSummary) RateSummary {
+	interestRate := scenario.Scenario.Loan.FindCurrentInterestRate(month)
 
 	constantRateValue := RateValue{
-		Value:      constRateValue(loan.Value, interestRate.yearPercent, loan.Length),
+		Value:      constRateValue(scenario.Scenario.Loan.Value, interestRate.yearPercent, scenario.Scenario.Loan.Length),
 		SinceMonth: 0,
 	}
 
-	remainingLoanToBePaid := loan.Value
+	remainingLoanToBePaid := scenario.Scenario.Loan.Value
 	totalLoanPaid := decimal.Zero
 	totalInterestPaid := decimal.Zero
 	totalSaved := decimal.Zero
 
-	if len(rateSummaries) > 0 {
-		lastRateSummary := rateSummaries[len(rateSummaries)-1]
+	if len(scenario.Rates) > 0 {
+		lastRateSummary := scenario.Rates[len(scenario.Rates)-1]
 		remainingLoanToBePaid = lastRateSummary.RemainingLoanToBePaid
 		totalLoanPaid = lastRateSummary.Total.Loan
 		totalInterestPaid = lastRateSummary.Total.Interest
 		totalSaved = lastRateSummary.SavingsLeftThisMonth
 	}
 
-	if len(rateSummaries) != 0 && interestRate.sinceMonth > 0 && len(rateSummaries) >= interestRate.sinceMonth {
-		rateSummaryBeforeInterestRateChange := rateSummaries[interestRate.sinceMonth-1]
+	if len(scenario.Rates) != 0 && interestRate.sinceMonth > 0 && len(scenario.Rates) >= interestRate.sinceMonth {
+		rateSummaryBeforeInterestRateChange := scenario.Rates[interestRate.sinceMonth-1]
 
 		constantRateValue = RateValue{
-			Value:      constRateValue(rateSummaryBeforeInterestRateChange.RemainingLoanToBePaid, interestRate.yearPercent, loan.Length.AddMonths(-interestRate.sinceMonth)),
+			Value:      constRateValue(rateSummaryBeforeInterestRateChange.RemainingLoanToBePaid, interestRate.yearPercent, scenario.Scenario.Loan.Length.AddMonths(-interestRate.sinceMonth)),
 			SinceMonth: interestRate.sinceMonth,
 		}
 	}
@@ -38,9 +38,9 @@ func (r RateAlgorithmConstantPessimistic) calculate(month int, loan Loan, overpa
 	initialInterestThisMonth := monthInterest(remainingLoanToBePaid, interestRate.yearPercent)
 	initialLoanThisMonth := constantRateValue.Value.Sub(initialInterestThisMonth)
 
-	savedThisMonth := savings.Savings(month, initialLoanThisMonth, initialInterestThisMonth)
+	savedThisMonth := scenario.Scenario.Savings.Savings(month, initialLoanThisMonth, initialInterestThisMonth)
 
-	totalPaidThisMonth, savingsLeftThisMonth := overpay.Overpay(month, initialLoanThisMonth, initialInterestThisMonth, savedThisMonth.Add(totalSaved))
+	totalPaidThisMonth, savingsLeftThisMonth := scenario.Scenario.Overpay.Overpay(month, initialLoanThisMonth, initialInterestThisMonth, savedThisMonth.Add(totalSaved))
 	paidLoanThisMonth := totalPaidThisMonth.Sub(initialInterestThisMonth)
 
 	if paidLoanThisMonth.GreaterThan(remainingLoanToBePaid) {
@@ -50,7 +50,7 @@ func (r RateAlgorithmConstantPessimistic) calculate(month int, loan Loan, overpa
 	totalLoanPaid = totalLoanPaid.Add(paidLoanThisMonth)
 	totalInterestPaid = totalInterestPaid.Add(initialInterestThisMonth)
 
-	remainingLoanToBePaid = loan.Value.Sub(totalLoanPaid)
+	remainingLoanToBePaid = scenario.Scenario.Loan.Value.Sub(totalLoanPaid)
 
 	overpaid := paidLoanThisMonth.Add(initialInterestThisMonth).Sub(constantRateValue.Value)
 	if overpaid.LessThan(decimal.NewFromInt(0)) {

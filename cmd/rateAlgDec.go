@@ -5,16 +5,16 @@ import "github.com/shopspring/decimal"
 type RateAlgorithmDecreasing struct {
 }
 
-func (r RateAlgorithmDecreasing) calculate(month int, loan Loan, overpay Overpay, savings SavingsAlgorithm, rateSummaries []RateSummary) RateSummary {
-	interestRate := loan.FindCurrentInterestRate(month)
+func (r RateAlgorithmDecreasing) calculate(month int, scenario ScenarioSummary) RateSummary {
+	interestRate := scenario.Scenario.Loan.FindCurrentInterestRate(month)
 
-	remainingLoanToBePaid := loan.Value
+	remainingLoanToBePaid := scenario.Scenario.Loan.Value
 	totalLoanPaid := decimal.Zero
 	totalInterestPaid := decimal.Zero
 	totalSaved := decimal.Zero
 
-	if len(rateSummaries) > 0 {
-		lastRateSummary := rateSummaries[len(rateSummaries)-1]
+	if len(scenario.Rates) > 0 {
+		lastRateSummary := scenario.Rates[len(scenario.Rates)-1]
 
 		remainingLoanToBePaid = lastRateSummary.RemainingLoanToBePaid
 		totalLoanPaid = lastRateSummary.Total.Loan
@@ -22,12 +22,12 @@ func (r RateAlgorithmDecreasing) calculate(month int, loan Loan, overpay Overpay
 		totalSaved = lastRateSummary.SavingsLeftThisMonth
 	}
 
-	initialLoanThisMonth := loan.CalculateConstLoan()
+	initialLoanThisMonth := scenario.Scenario.Loan.CalculateConstLoan()
 	initialInterestThisMonth := remainingLoanToBePaid.Mul(interestRate.MonthPercent())
 
-	savedThisMonth := savings.Savings(month, initialLoanThisMonth, initialInterestThisMonth)
+	savedThisMonth := scenario.Scenario.Savings.Savings(month, initialLoanThisMonth, initialInterestThisMonth)
 
-	totalPaidThisMonth, savingsLeftThisMonth := overpay.Overpay(month, initialLoanThisMonth, initialInterestThisMonth, savedThisMonth.Add(totalSaved))
+	totalPaidThisMonth, savingsLeftThisMonth := scenario.Scenario.Overpay.Overpay(month, initialLoanThisMonth, initialInterestThisMonth, savedThisMonth.Add(totalSaved))
 	paidLoanThisMonth := totalPaidThisMonth.Sub(initialInterestThisMonth)
 
 	if paidLoanThisMonth.GreaterThan(remainingLoanToBePaid) {
@@ -37,7 +37,7 @@ func (r RateAlgorithmDecreasing) calculate(month int, loan Loan, overpay Overpay
 	totalLoanPaid = totalLoanPaid.Add(paidLoanThisMonth)
 	totalInterestPaid = totalInterestPaid.Add(initialInterestThisMonth)
 
-	remainingLoanToBePaid = loan.Value.Sub(totalLoanPaid)
+	remainingLoanToBePaid = scenario.Scenario.Loan.Value.Sub(totalLoanPaid)
 
 	overpaid := paidLoanThisMonth.Sub(initialLoanThisMonth)
 	if overpaid.LessThan(decimal.Zero) {
