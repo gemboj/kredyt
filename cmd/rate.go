@@ -9,10 +9,9 @@ import (
 type RateSummary struct {
 	InitalRate Rate
 	PaidRate   Rate
+	Total      Rate
 
 	CurrentMonth          int
-	TotalLoanPaid         decimal.Decimal
-	TotalInterestPaid     decimal.Decimal
 	RemainingLoanToBePaid decimal.Decimal
 }
 
@@ -20,18 +19,16 @@ func (r *RateSummary) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct {
 		InitalRate            Rate
 		PaidRate              Rate
+		Total                 Rate
 		Overpaid              decimal.Decimal
 		CurrentMonth          int
-		TotalLoanPaid         decimal.Decimal
-		TotalInterestPaid     decimal.Decimal
 		RemainingLoanToBePaid decimal.Decimal
 	}{
 		InitalRate:            r.InitalRate,
 		PaidRate:              r.PaidRate,
+		Total:                 r.Total,
 		Overpaid:              round(r.PaidRate.Loan.Sub(r.InitalRate.Loan)),
 		CurrentMonth:          r.CurrentMonth,
-		TotalLoanPaid:         round(r.TotalLoanPaid),
-		TotalInterestPaid:     round(r.TotalInterestPaid),
 		RemainingLoanToBePaid: round(r.RemainingLoanToBePaid),
 	})
 }
