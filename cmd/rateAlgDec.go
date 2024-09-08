@@ -5,7 +5,7 @@ import "github.com/shopspring/decimal"
 type RateAlgorithmDecreasing struct {
 }
 
-func (r RateAlgorithmDecreasing) calculate(month int, loan Loan, overpay OverpayAlgorithm, savings SavingsAlgorithm, rateSummaries []RateSummary) RateSummary {
+func (r RateAlgorithmDecreasing) calculate(month int, loan Loan, overpay Overpay, savings SavingsAlgorithm, rateSummaries []RateSummary) RateSummary {
 	interestRate := loan.FindCurrentInterestRate(month)
 
 	remainingLoanToBePaid := loan.Value

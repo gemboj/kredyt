@@ -19,7 +19,7 @@ func Test_RateAlgConstPessimistic(t *testing.T) {
 				},
 			},
 		},
-		Overpay:       OverpayConst{},
+		Overpay:       Overpay{},
 		Savings:       SavingsConst{},
 		RateAlgorithm: RateAlgorithmConstantPessimistic{},
 	}
@@ -45,7 +45,7 @@ func Test_RateAlgConstPessimistic_changingInterest(t *testing.T) {
 				},
 			},
 		},
-		Overpay:       OverpayConst{},
+		Overpay:       Overpay{},
 		Savings:       SavingsConst{},
 		RateAlgorithm: RateAlgorithmConstantPessimistic{},
 	}
@@ -67,8 +67,8 @@ func Test_RateAlgConstPessimistic_overpayConst(t *testing.T) {
 				},
 			},
 		},
-		Overpay:       OverpayConst{},
-		Savings:       SavingsConst{ConstValue: decimal.NewFromInt(1000)},
+		Overpay:       Overpay{},
+		Savings:       SavingsConst{Value: decimal.NewFromInt(1000)},
 		RateAlgorithm: RateAlgorithmConstantPessimistic{},
 	}
 	periodRates := listRatesWithAlgorithm(scenario)

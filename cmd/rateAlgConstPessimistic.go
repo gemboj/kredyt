@@ -5,7 +5,7 @@ import "github.com/shopspring/decimal"
 type RateAlgorithmConstantPessimistic struct {
 }
 
-func (r RateAlgorithmConstantPessimistic) calculate(month int, loan Loan, overpay OverpayAlgorithm, savings SavingsAlgorithm, rateSummaries []RateSummary) RateSummary {
+func (r RateAlgorithmConstantPessimistic) calculate(month int, loan Loan, overpay Overpay, savings SavingsAlgorithm, rateSummaries []RateSummary) RateSummary {
 	interestRate := loan.FindCurrentInterestRate(month)
 
 	constantRateValue := RateValue{

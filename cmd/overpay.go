@@ -2,11 +2,7 @@ package main
 
 import "github.com/shopspring/decimal"
 
-type OverpayAlgorithm interface {
-	Overpay(int, decimal.Decimal, decimal.Decimal, decimal.Decimal) (decimal.Decimal, decimal.Decimal)
-}
-
-type OverpayConst struct {
+type Overpay struct {
 	// By default, if PeriodMonths == 0, overpay every month.
 	// Periodmonths == 0 is the same as Periodmonths == 1
 	PeriodMonths int
@@ -15,7 +11,7 @@ type OverpayConst struct {
 	Commission decimal.Decimal
 }
 
-func (o OverpayConst) Overpay(month int, loanThisMonth, interestThisMonth, savingsToUse decimal.Decimal) (decimal.Decimal, decimal.Decimal) {
+func (o Overpay) Overpay(month int, loanThisMonth, interestThisMonth, savingsToUse decimal.Decimal) (decimal.Decimal, decimal.Decimal) {
 	totalThisMonth := interestThisMonth.Add(loanThisMonth)
 
 	periodMonths := o.PeriodMonths
@@ -23,7 +19,7 @@ func (o OverpayConst) Overpay(month int, loanThisMonth, interestThisMonth, savin
 		periodMonths = 1
 	}
 
-	if month%periodMonths == 1 {
+	if (month+1)%(periodMonths) != 0 || savingsToUse.Equal(decimal.Zero) {
 		return totalThisMonth, savingsToUse
 	}
 

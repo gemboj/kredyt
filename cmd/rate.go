@@ -42,6 +42,10 @@ type Rate struct {
 	Interest decimal.Decimal
 }
 
+func (r Rate) Total() decimal.Decimal {
+	return r.Loan.Add(r.Interest)
+}
+
 func (r *Rate) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct {
 		Total    decimal.Decimal

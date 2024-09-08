@@ -10,7 +10,7 @@ type SavingsAlgorithm interface {
 // i.e.  savingsConst(1000) mean we will add 1000 to whatever value we needed to pay.
 // if the rateThisMonth is 500, it means we will pay 1500 instead this month, thus the savings equals 1000.
 type SavingsConst struct {
-	ConstValue decimal.Decimal
+	Value decimal.Decimal
 
 	// By default, if PeriodMonths == 0, savings every month.
 	// Periodmonths == 0 is the same as Periodmonths == 1
@@ -27,7 +27,7 @@ func (o SavingsConst) Savings(month int, _, _ decimal.Decimal) decimal.Decimal {
 		return decimal.Zero
 	}
 
-	return o.ConstValue
+	return o.Value
 }
 
 // SavingsFlatTotal defines savings as a flat value that will be paid as LoanThisMonth.
@@ -35,7 +35,7 @@ func (o SavingsConst) Savings(month int, _, _ decimal.Decimal) decimal.Decimal {
 // if the rateThisMonth is 500, it means we will pay 2000 of rate this month (including interest)
 // of course the toal value paid needs to be higher than interest.
 type SavingsFlatTotal struct {
-	FlatTotalValue decimal.Decimal
+	Value decimal.Decimal
 
 	// By default, if PeriodMonths == 0, savings every month.
 	// Periodmonths == 0 is the same as Periodmonths == 1
@@ -54,9 +54,9 @@ func (o SavingsFlatTotal) Savings(month int, loanThisMonth, interestThisMonth de
 		return decimal.Zero
 	}
 
-	if o.FlatTotalValue.LessThan(totalThisMonth) {
+	if o.Value.LessThan(totalThisMonth) {
 		return decimal.Zero
 	}
 
-	return o.FlatTotalValue.Sub(totalThisMonth)
+	return o.Value.Sub(totalThisMonth)
 }
