@@ -57,6 +57,21 @@ func (r RateAlgorithmConstantPessimistic) calculate(month int, scenario Scenario
 		overpaid = decimal.Zero
 	}
 
+	var miscCosts []decimal.Decimal
+	for _, miscCost := range scenario.Scenario.MiscCosts {
+		c := miscCost.Calculate(month, scenario)
+		miscCosts = append(miscCosts, c)
+	}
+
+	miscCostsTotal := make([]decimal.Decimal, len(miscCosts))
+	if len(scenario.Rates) > 0 && len(scenario.Rates[len(scenario.Rates)-1].MiscCostsTotal) > 0 {
+		miscCostsTotal = scenario.Rates[len(scenario.Rates)-1].MiscCostsTotal
+	}
+
+	for i, miscCost := range miscCosts {
+		miscCostsTotal[i] = miscCostsTotal[i].Add(miscCost)
+	}
+
 	return RateSummary{
 		InitalRate: Rate{
 			Loan:     initialLoanThisMonth,
@@ -70,6 +85,8 @@ func (r RateAlgorithmConstantPessimistic) calculate(month int, scenario Scenario
 			Loan:     totalLoanPaid,
 			Interest: totalInterestPaid,
 		},
+		MiscCosts:             miscCosts,
+		MiscCostsTotal:        miscCostsTotal,
 		SavingsLeftThisMonth:  savingsLeftThisMonth,
 		CurrentMonth:          month,
 		RemainingLoanToBePaid: remainingLoanToBePaid,

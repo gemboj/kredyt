@@ -23,7 +23,7 @@ import (
 func main() {
 	loanBaseline := Loan{
 		Value:  decimal.NewFromInt(330_000),
-		Length: NewLoanLengthFromMonths(120),
+		Length: NewLoanLengthFromMonths(180),
 		InterestRates: []InterestConfig{
 			{
 				yearPercent: percent(7.07),
@@ -36,12 +36,19 @@ func main() {
 		},
 	}
 
+	miscCostsBaseline := []MiscCostsAlgorithm{
+		MiscCostsFromLoan{Percentage: percent(0.0096)},
+		MiscCostsFromRemainingLoan{Percentage: percent(0.035), UpToMonth: 36},
+		MiscCostsSingle{Cost: decimal.NewFromInt(560)},
+	}
+
 	optimalScenarioWithComission := findOptimalOverpayScenarioWithCommision(
 		Scenario{
 			Loan:          loanBaseline,
 			RateAlgorithm: RateAlgorithmConstantPessimistic{},
 			Overpay:       Overpay{Commission: decimal.NewFromInt(200)},
 			Savings:       SavingsFlatTotal{Value: decimal.NewFromInt(5000)},
+			MiscCosts:     miscCostsBaseline,
 		},
 	)
 
@@ -51,18 +58,21 @@ func main() {
 			RateAlgorithm: RateAlgorithmConstantPessimistic{},
 			Overpay:       Overpay{},
 			Savings:       SavingsConst{Value: decimal.NewFromInt(0)},
+			MiscCosts:     miscCostsBaseline,
 		},
 		{
 			Loan:          loanBaseline,
 			RateAlgorithm: RateAlgorithmConstantPessimistic{},
 			Overpay:       Overpay{Commission: decimal.NewFromInt(200)},
 			Savings:       SavingsFlatTotal{},
+			MiscCosts:     miscCostsBaseline,
 		},
 		{
 			Loan:          loanBaseline,
 			RateAlgorithm: RateAlgorithmConstantPessimistic{},
 			Overpay:       Overpay{},
 			Savings:       SavingsFlatTotal{Value: decimal.NewFromInt(5000)},
+			MiscCosts:     miscCostsBaseline,
 		},
 		optimalScenarioWithComission.Scenario,
 	}
@@ -87,6 +97,7 @@ type Scenario struct {
 	Overpay       Overpay
 	Savings       SavingsAlgorithm
 	RateAlgorithm rateAlgorithm
+	MiscCosts     []MiscCostsAlgorithm
 }
 
 type ScenarioSummary struct {
@@ -97,17 +108,19 @@ type ScenarioSummary struct {
 func displayScenarioComparion(scenarios []ScenarioSummary) {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
-	t.AppendHeader(table.Row{"#", "Total", "Months", "FirstRate", "FirstRateOverpay", "OverpayPeriod"})
+	t.AppendHeader(table.Row{"#", "Total", "TotalInterest", "Months", "FirstRate", "FirstRateOverpay", "OverpayPeriod", "MiscCosts"})
 	for i, s := range scenarios {
 		rateLast := s.Rates[len(s.Rates)-1]
 		rateFirst := s.Rates[0]
 		t.AppendRow([]interface{}{
 			i,
+			sum(append(rateLast.MiscCostsTotal, rateLast.Total.Interest)...).Round(2),
 			rateLast.Total.Interest.Round(2),
 			s.Scenario.Loan.Length.Months(),
 			rateFirst.InitalRate.Total().Round(2),
 			rateFirst.PaidRate.Total().Sub(rateFirst.InitalRate.Total()).Round(2),
 			s.Scenario.Overpay.PeriodMonths,
+			roundSlice(rateLast.MiscCostsTotal),
 		})
 	}
 
@@ -175,4 +188,13 @@ func findOptimalOverpayScenarioWithCommision(scenario Scenario) ScenarioSummary 
 
 		previousResult = result
 	}
+}
+
+func sum(ds ...decimal.Decimal) decimal.Decimal {
+	out := decimal.Zero
+	for _, d := range ds {
+		out = out.Add(d)
+	}
+
+	return out
 }

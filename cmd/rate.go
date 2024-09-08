@@ -7,9 +7,11 @@ import (
 )
 
 type RateSummary struct {
-	InitalRate Rate
-	PaidRate   Rate
-	Total      Rate
+	InitalRate     Rate
+	PaidRate       Rate
+	Total          Rate
+	MiscCosts      []decimal.Decimal
+	MiscCostsTotal []decimal.Decimal
 
 	SavingsLeftThisMonth decimal.Decimal
 
@@ -60,4 +62,13 @@ func (r *Rate) MarshalJSON() ([]byte, error) {
 
 func round(d decimal.Decimal) decimal.Decimal {
 	return d.Round(2)
+}
+
+func roundSlice(ds []decimal.Decimal) []decimal.Decimal {
+	var out []decimal.Decimal
+	for _, d := range ds {
+		out = append(out, d.Round(2))
+	}
+
+	return out
 }
