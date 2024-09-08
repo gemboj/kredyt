@@ -28,11 +28,11 @@ func (r *RateSummary) MarshalJSON() ([]byte, error) {
 	}{
 		InitalRate:            r.InitalRate,
 		PaidRate:              r.PaidRate,
-		Overpaid:              r.PaidRate.Loan.Sub(r.InitalRate.Loan),
+		Overpaid:              round(r.PaidRate.Loan.Sub(r.InitalRate.Loan)),
 		CurrentMonth:          r.CurrentMonth,
-		TotalLoanPaid:         r.TotalLoanPaid,
-		TotalInterestPaid:     r.TotalInterestPaid,
-		RemainingLoanToBePaid: r.RemainingLoanToBePaid,
+		TotalLoanPaid:         round(r.TotalLoanPaid),
+		TotalInterestPaid:     round(r.TotalInterestPaid),
+		RemainingLoanToBePaid: round(r.RemainingLoanToBePaid),
 	})
 }
 
@@ -47,8 +47,12 @@ func (r *Rate) MarshalJSON() ([]byte, error) {
 		Loan     decimal.Decimal
 		Interest decimal.Decimal
 	}{
-		Total:    r.Loan.Add(r.Interest),
-		Loan:     r.Loan,
-		Interest: r.Interest,
+		Total:    round(r.Loan.Add(r.Interest)),
+		Loan:     round(r.Loan),
+		Interest: round(r.Interest),
 	})
+}
+
+func round(d decimal.Decimal) decimal.Decimal {
+	return d.Round(2)
 }
