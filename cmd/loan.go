@@ -5,28 +5,28 @@ import "github.com/shopspring/decimal"
 type Loan struct {
 	Value         decimal.Decimal
 	Length        LoanLength
-	InterestRates []InterestRate
+	InterestRates []InterestConfig
 }
 
-func (l Loan) CalculateConstInstallment() decimal.Decimal {
+func (l Loan) CalculateConstLoan() decimal.Decimal {
 	return l.Value.Div(l.Length.MonthsDecimal())
 }
 
-func (l Loan) FindCurrentInterestRate(month int) InterestRate {
+func (l Loan) FindCurrentInterestRate(month int) InterestConfig {
 	for i := len(l.InterestRates) - 1; i >= 0; i-- {
 		if month >= l.InterestRates[i].sinceMonth {
 			return l.InterestRates[i]
 		}
 	}
 
-	return InterestRate{}
+	return InterestConfig{}
 }
 
-type InterestRate struct {
+type InterestConfig struct {
 	yearPercent decimal.Decimal
 	sinceMonth  int
 }
 
-func (r InterestRate) MonthPercent() decimal.Decimal {
+func (r InterestConfig) MonthPercent() decimal.Decimal {
 	return r.yearPercent.Div(decimal.NewFromInt(12))
 }

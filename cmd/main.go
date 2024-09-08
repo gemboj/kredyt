@@ -1,5 +1,16 @@
 package main
 
+/*
+Terminology:
+
+Loan - monetary value of the loan taken (excluding any additional fees, like interests, etc.)
+LoanCurrentMonth - amount of paid/to be paid of the loan in the current month
+Interest - monetary value of Interest to be paid
+InterestRates - percentage value used to calculate monetary value of Interest based on Loan
+Rate - month's worth of money used to paid the Loan, includes Interest.
+
+*/
+
 import (
 	"encoding/json"
 	"fmt"
@@ -11,7 +22,7 @@ func main() {
 	loan := Loan{
 		Value:  decimal.NewFromInt(330000),
 		Length: NewLoanLengthFromYears(7),
-		InterestRates: []InterestRate{
+		InterestRates: []InterestConfig{
 			{
 				yearPercent: decimal.NewFromFloat(0.067),
 				sinceMonth:  0,
@@ -26,7 +37,7 @@ func main() {
 	//overpay := overPayFlatTotal(5000)
 	overpay := overPayConst(decimal.NewFromInt(0))
 
-	var rates []Rate
+	var rates []RateSummary
 
 	//constRateValue := constRateValue(credit, rateChanges[0].yearPercent, cl)
 	//periodRates := listRatesWithConstant(RateValue{Value: constRateValue, SinceMonth: rateChanges[0].sinceMonth}, credit, cl, overpay)
@@ -35,7 +46,7 @@ func main() {
 
 	rates = append(rates, periodRates...)
 
-	var ratesSummary []Rate
+	var ratesSummary []RateSummary
 	for _, rateChange := range loan.InterestRates {
 		if len(rates) < rateChange.sinceMonth-1 {
 			break
@@ -68,175 +79,76 @@ type RateValue struct {
 	SinceMonth int
 }
 
+// overPayConst defines overpay as a constant value added to LoanThisMonth every month.
+// i.e.  overPayConst(1000) mean we will add 1000 to whatever value we needed to pay.
+// if the loanValueThisMonth is 500, it means we will pay 1500 of loan this month, thus the overpay equals 1000.
 func overPayConst(c decimal.Decimal) func(decimal.Decimal, decimal.Decimal) decimal.Decimal {
-	return func(capital, _ decimal.Decimal) decimal.Decimal {
-		return capital.Add(c)
+	return func(loanThisMonth, _ decimal.Decimal) decimal.Decimal {
+		return loanThisMonth.Add(c)
 	}
 }
 
+// overPayFlatTotal defines overpay as a flat value that will be paid as LoanThisMonth.
+// i.e.  overPayFlatTotal(2000) means we will pay 2000 in total this month.
+// if the rateThisMonth is 500, it means we will pay 2000 of rate this month (including interest)
+// of course the toal value paid needs to be higher than interest.
 func overPayFlatTotal(flatTotal decimal.Decimal) func(decimal.Decimal, decimal.Decimal) decimal.Decimal {
-	return func(capital, interest decimal.Decimal) decimal.Decimal {
-		if flatTotal.LessThan(interest) {
-			return interest
+	return func(_, interestThisMonth decimal.Decimal) decimal.Decimal {
+		if flatTotal.LessThan(interestThisMonth) {
+			return interestThisMonth
 		}
 
-		return flatTotal.Sub(interest)
+		return flatTotal.Sub(interestThisMonth)
 	}
 }
 
-func listRatesWithConstant(initialConstantRateValue RateValue, loan Loan, overpay func(decimal.Decimal, decimal.Decimal) decimal.Decimal) []Rate {
+func listRatesWithConstant(initialConstantRateValue RateValue, loan Loan, overpay func(decimal.Decimal, decimal.Decimal) decimal.Decimal) []RateSummary {
 	constantRateValue := initialConstantRateValue
-	totalLoanLeft := loan.Value
-
-	var totalCapitalPaid, totalInterestPaid decimal.Decimal
-
-	var rates []Rate
-
-	for i := 0; i < loan.Length.Months(); i++ {
-		rateChange := loan.FindCurrentInterestRate(i)
-
-		if constantRateValue.SinceMonth != rateChange.sinceMonth {
-			constantRateValue = RateValue{
-				Value:      constRateValue(totalLoanLeft, rateChange.yearPercent, loan.Length.AddMonths(-rateChange.sinceMonth)),
-				SinceMonth: rateChange.sinceMonth,
-			}
-		}
-
-		interest := monthInterest(totalLoanLeft, rateChange.yearPercent)
-		capital := constantRateValue.Value.Sub(interest)
-		capitalPaid := overpay(capital, interest)
-
-		if capitalPaid.GreaterThan(totalLoanLeft) {
-			capitalPaid = totalLoanLeft
-		}
-
-		totalCapitalPaid = totalCapitalPaid.Add(capitalPaid)
-		totalInterestPaid = totalInterestPaid.Add(interest)
-
-		totalLoanLeft = loan.Value.Sub(totalCapitalPaid)
-
-		overpaid := capitalPaid.Add(interest).Sub(constantRateValue.Value)
-		if overpaid.LessThan(decimal.NewFromInt(0)) {
-			overpaid = decimal.Zero
-		}
-
-		rates = append(rates, Rate{
-			Value:                 capitalPaid.Add(interest),
-			Overpaid:              overpaid,
-			CapitalCurrentMonth:   capitalPaid,
-			InterestCurrentMonth:  interest,
-			ConstRateCurrentMonth: constantRateValue.Value,
-			CurrentMonth:          i,
-			TotalCapitalPaid:      totalCapitalPaid,
-			TotalInterestPaid:     totalInterestPaid,
-			RemainingLoanToBePaid: totalLoanLeft,
-		})
-
-		if totalLoanLeft.LessThanOrEqual(decimal.NewFromFloat(0.01)) {
-			break
-		}
-	}
-
-	return rates
-}
-
-type rateAlgorithm interface {
-	calculate(month int) Rate
-}
-
-type rateAlgorithmDecreasing struct {
-}
-
-type rateAlgorithmConstant struct {
-}
-
-func (r rateAlgorithmConstant) calculate(month int, loan Loan, remainingLoanToBePaid decimal.Decimal, overpay func(decimal.Decimal, decimal.Decimal) decimal.Decimal, totalLoanPaid, totalInterestPaid decimal.Decimal) Rate {
-	return Rate{}
-}
-
-func (r rateAlgorithmDecreasing) calculate(month int, loan Loan, remainingLoanToBePaid decimal.Decimal, overpay func(decimal.Decimal, decimal.Decimal) decimal.Decimal, totalLoanPaid, totalInterestPaid decimal.Decimal) Rate {
-	constInstallment := loan.CalculateConstInstallment()
-
-	interestRate := loan.FindCurrentInterestRate(month)
-
-	interestPaidThisMonth := remainingLoanToBePaid.Mul(interestRate.MonthPercent())
-	loanPaidThisMonth := overpay(constInstallment, interestPaidThisMonth)
-
-	if loanPaidThisMonth.GreaterThan(remainingLoanToBePaid) {
-		loanPaidThisMonth = remainingLoanToBePaid
-	}
-
-	totalLoanPaid = totalLoanPaid.Add(loanPaidThisMonth)
-	totalInterestPaid = totalInterestPaid.Add(interestPaidThisMonth)
-
-	remainingLoanToBePaid = loan.Value.Sub(totalLoanPaid)
-
-	overpaid := loanPaidThisMonth.Sub(constInstallment)
-	if overpaid.LessThan(decimal.Zero) {
-		overpaid = decimal.Zero
-	}
-
-	return Rate{
-		Value:                 loanPaidThisMonth.Add(interestPaidThisMonth),
-		Overpaid:              overpaid,
-		CapitalCurrentMonth:   loanPaidThisMonth,
-		InterestCurrentMonth:  interestPaidThisMonth,
-		CurrentMonth:          month,
-		TotalCapitalPaid:      totalLoanPaid,
-		TotalInterestPaid:     totalInterestPaid,
-		RemainingLoanToBePaid: remainingLoanToBePaid,
-	}
-}
-
-func listRatesWithAlgorithm(cl LoanLength, alg rateAlgorithm) []Rate {
-	var rates []Rate
-
-	for i := 0; i < cl.Months(); i++ {
-		rate := alg.calculate(i)
-		rates = append(rates, rate)
-
-		if rate.RemainingLoanToBePaid.LessThanOrEqual(decimal.NewFromFloat(0.01)) {
-			break
-		}
-	}
-
-	return rates
-}
-
-func listRatesWithDecreasing(loan Loan, overpay func(decimal.Decimal, decimal.Decimal) decimal.Decimal) []Rate {
 	remainingLoanToBePaid := loan.Value
 
 	var totalLoanPaid, totalInterestPaid decimal.Decimal
 
-	var rates []Rate
+	var rates []RateSummary
 
 	for i := 0; i < loan.Length.Months(); i++ {
 		interestRate := loan.FindCurrentInterestRate(i)
 
-		interestPaidThisMonth := remainingLoanToBePaid.Mul(interestRate.MonthPercent())
-		loanPaidThisMonth := overpay(loan.CalculateConstInstallment(), interestPaidThisMonth)
-
-		if loanPaidThisMonth.GreaterThan(remainingLoanToBePaid) {
-			loanPaidThisMonth = remainingLoanToBePaid
+		if constantRateValue.SinceMonth != interestRate.sinceMonth {
+			constantRateValue = RateValue{
+				Value:      constRateValue(remainingLoanToBePaid, interestRate.yearPercent, loan.Length.AddMonths(-interestRate.sinceMonth)),
+				SinceMonth: interestRate.sinceMonth,
+			}
 		}
 
-		totalLoanPaid = totalLoanPaid.Add(loanPaidThisMonth)
-		totalInterestPaid = totalInterestPaid.Add(interestPaidThisMonth)
+		initialInterestThisMonth := monthInterest(remainingLoanToBePaid, interestRate.yearPercent)
+		initialLoanThisMonth := constantRateValue.Value.Sub(initialInterestThisMonth)
+		paidLoanThisMonth := overpay(initialLoanThisMonth, initialInterestThisMonth)
+
+		if paidLoanThisMonth.GreaterThan(remainingLoanToBePaid) {
+			paidLoanThisMonth = remainingLoanToBePaid
+		}
+
+		totalLoanPaid = totalLoanPaid.Add(paidLoanThisMonth)
+		totalInterestPaid = totalInterestPaid.Add(initialInterestThisMonth)
 
 		remainingLoanToBePaid = loan.Value.Sub(totalLoanPaid)
 
-		overpaid := loanPaidThisMonth.Sub(loan.CalculateConstInstallment())
-		if overpaid.LessThan(decimal.Zero) {
+		overpaid := paidLoanThisMonth.Add(initialInterestThisMonth).Sub(constantRateValue.Value)
+		if overpaid.LessThan(decimal.NewFromInt(0)) {
 			overpaid = decimal.Zero
 		}
 
-		rates = append(rates, Rate{
-			Value:                 loanPaidThisMonth.Add(interestPaidThisMonth),
-			Overpaid:              overpaid,
-			CapitalCurrentMonth:   loanPaidThisMonth,
-			InterestCurrentMonth:  interestPaidThisMonth,
+		rates = append(rates, RateSummary{
+			InitalRate: Rate{
+				Loan:     initialLoanThisMonth,
+				Interest: initialInterestThisMonth,
+			},
+			PaidRate: Rate{
+				Loan:     paidLoanThisMonth,
+				Interest: initialInterestThisMonth,
+			},
 			CurrentMonth:          i,
-			TotalCapitalPaid:      totalLoanPaid,
+			TotalLoanPaid:         totalLoanPaid,
 			TotalInterestPaid:     totalInterestPaid,
 			RemainingLoanToBePaid: remainingLoanToBePaid,
 		})
@@ -249,20 +161,122 @@ func listRatesWithDecreasing(loan Loan, overpay func(decimal.Decimal, decimal.De
 	return rates
 }
 
-func decreasingRateValue(credit, yearPercent decimal.Decimal, cl LoanLength) decimal.Decimal {
-	return credit.
-		Mul(yearPercent).
-		Div(
-			decimal.NewFromInt(12).
-				Mul(
-					decimal.NewFromInt(1).
-						Sub(
-							decimal.NewFromInt(12).
-								Div(decimal.NewFromInt(12).Add(yearPercent)).
-								Pow(cl.MonthsDecimal()),
-						),
-				),
-		)
+func listRatesWithDecreasing(loan Loan, overpay func(decimal.Decimal, decimal.Decimal) decimal.Decimal) []RateSummary {
+	remainingLoanToBePaid := loan.Value
+
+	var totalLoanPaid, totalInterestPaid decimal.Decimal
+
+	var rates []RateSummary
+
+	for i := 0; i < loan.Length.Months(); i++ {
+		interestRate := loan.FindCurrentInterestRate(i)
+
+		initialInterestThisMonth := remainingLoanToBePaid.Mul(interestRate.MonthPercent())
+		initialLoanThisMonth := loan.CalculateConstLoan()
+		paidLoanThisMonth := overpay(initialLoanThisMonth, initialInterestThisMonth)
+
+		if paidLoanThisMonth.GreaterThan(remainingLoanToBePaid) {
+			paidLoanThisMonth = remainingLoanToBePaid
+		}
+
+		totalLoanPaid = totalLoanPaid.Add(paidLoanThisMonth)
+		totalInterestPaid = totalInterestPaid.Add(initialInterestThisMonth)
+
+		remainingLoanToBePaid = loan.Value.Sub(totalLoanPaid)
+
+		overpaid := paidLoanThisMonth.Sub(loan.CalculateConstLoan())
+		if overpaid.LessThan(decimal.Zero) {
+			overpaid = decimal.Zero
+		}
+
+		rates = append(rates, RateSummary{
+			InitalRate: Rate{
+				Loan:     initialLoanThisMonth,
+				Interest: initialInterestThisMonth,
+			},
+			PaidRate: Rate{
+				Loan:     paidLoanThisMonth,
+				Interest: initialInterestThisMonth,
+			},
+			CurrentMonth:          i,
+			TotalLoanPaid:         totalLoanPaid,
+			TotalInterestPaid:     totalInterestPaid,
+			RemainingLoanToBePaid: remainingLoanToBePaid,
+		})
+
+		if remainingLoanToBePaid.LessThanOrEqual(decimal.NewFromFloat(0.01)) {
+			break
+		}
+	}
+
+	return rates
+}
+
+type rateAlgorithm interface {
+	calculate(month int) RateSummary
+}
+
+type rateAlgorithmDecreasing struct {
+}
+
+type rateAlgorithmConstant struct {
+}
+
+func (r rateAlgorithmConstant) calculate(month int, loan Loan, remainingLoanToBePaid decimal.Decimal, overpay func(decimal.Decimal, decimal.Decimal) decimal.Decimal, totalLoanPaid, totalInterestPaid decimal.Decimal) RateSummary {
+	return RateSummary{}
+}
+
+func (r rateAlgorithmDecreasing) calculate(month int, loan Loan, remainingLoanToBePaid decimal.Decimal, overpay func(decimal.Decimal, decimal.Decimal) decimal.Decimal, totalLoanPaid, totalInterestPaid decimal.Decimal) RateSummary {
+	initialLoanThisMonth := loan.CalculateConstLoan()
+
+	interestRate := loan.FindCurrentInterestRate(month)
+
+	initialInterestThisMonth := remainingLoanToBePaid.Mul(interestRate.MonthPercent())
+	paidLoanThisMonth := overpay(initialLoanThisMonth, initialInterestThisMonth)
+
+	if paidLoanThisMonth.GreaterThan(remainingLoanToBePaid) {
+		paidLoanThisMonth = remainingLoanToBePaid
+	}
+
+	totalLoanPaid = totalLoanPaid.Add(paidLoanThisMonth)
+	totalInterestPaid = totalInterestPaid.Add(initialInterestThisMonth)
+
+	remainingLoanToBePaid = loan.Value.Sub(totalLoanPaid)
+
+	overpaid := paidLoanThisMonth.Sub(initialLoanThisMonth)
+	if overpaid.LessThan(decimal.Zero) {
+		overpaid = decimal.Zero
+	}
+
+	return RateSummary{
+		InitalRate: Rate{
+			Loan:     initialLoanThisMonth,
+			Interest: initialInterestThisMonth,
+		},
+		PaidRate: Rate{
+			Loan:     paidLoanThisMonth,
+			Interest: initialInterestThisMonth,
+		},
+		CurrentMonth:          month,
+		TotalLoanPaid:         totalLoanPaid,
+		TotalInterestPaid:     totalInterestPaid,
+		RemainingLoanToBePaid: remainingLoanToBePaid,
+	}
+}
+
+func listRatesWithAlgorithm(cl LoanLength, alg rateAlgorithm) []RateSummary {
+	var rates []RateSummary
+
+	for i := 0; i < cl.Months(); i++ {
+		rate := alg.calculate(i)
+		rates = append(rates, rate)
+
+		if rate.RemainingLoanToBePaid.LessThanOrEqual(decimal.NewFromFloat(0.01)) {
+			break
+		}
+	}
+
+	return rates
 }
 
 func constRateValue(credit, yearPercent decimal.Decimal, cl LoanLength) decimal.Decimal {
