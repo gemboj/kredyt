@@ -5,7 +5,7 @@ import "github.com/shopspring/decimal"
 type RateAlgorithmConstantPessimistic struct {
 }
 
-func (r RateAlgorithmConstantPessimistic) calculate(month int, loan Loan, overpay OverpayAlgorithm, rateSummaries []RateSummary) RateSummary {
+func (r RateAlgorithmConstantPessimistic) calculate(month int, loan Loan, overpay OverpayAlgorithm, savings SavingsAlgorithm, rateSummaries []RateSummary) RateSummary {
 	interestRate := loan.FindCurrentInterestRate(month)
 
 	constantRateValue := RateValue{
@@ -16,12 +16,14 @@ func (r RateAlgorithmConstantPessimistic) calculate(month int, loan Loan, overpa
 	remainingLoanToBePaid := loan.Value
 	totalLoanPaid := decimal.Zero
 	totalInterestPaid := decimal.Zero
+	totalSaved := decimal.Zero
 
 	if len(rateSummaries) > 0 {
 		lastRateSummary := rateSummaries[len(rateSummaries)-1]
 		remainingLoanToBePaid = lastRateSummary.RemainingLoanToBePaid
 		totalLoanPaid = lastRateSummary.Total.Loan
 		totalInterestPaid = lastRateSummary.Total.Interest
+		totalSaved = lastRateSummary.SavingsLeftThisMonth
 	}
 
 	if len(rateSummaries) != 0 && interestRate.sinceMonth > 0 && len(rateSummaries) >= interestRate.sinceMonth {
@@ -35,7 +37,10 @@ func (r RateAlgorithmConstantPessimistic) calculate(month int, loan Loan, overpa
 
 	initialInterestThisMonth := monthInterest(remainingLoanToBePaid, interestRate.yearPercent)
 	initialLoanThisMonth := constantRateValue.Value.Sub(initialInterestThisMonth)
-	totalPaidThisMonth := overpay.Overpay(month, initialLoanThisMonth, initialInterestThisMonth)
+
+	savedThisMonth := savings.Savings(month, initialLoanThisMonth, initialInterestThisMonth)
+
+	totalPaidThisMonth, savingsLeftThisMonth := overpay.Overpay(month, initialLoanThisMonth, initialInterestThisMonth, savedThisMonth.Add(totalSaved))
 	paidLoanThisMonth := totalPaidThisMonth.Sub(initialInterestThisMonth)
 
 	if paidLoanThisMonth.GreaterThan(remainingLoanToBePaid) {
@@ -65,6 +70,7 @@ func (r RateAlgorithmConstantPessimistic) calculate(month int, loan Loan, overpa
 			Loan:     totalLoanPaid,
 			Interest: totalInterestPaid,
 		},
+		SavingsLeftThisMonth:  savingsLeftThisMonth,
 		CurrentMonth:          month,
 		RemainingLoanToBePaid: remainingLoanToBePaid,
 	}

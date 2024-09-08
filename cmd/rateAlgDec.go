@@ -5,14 +5,13 @@ import "github.com/shopspring/decimal"
 type RateAlgorithmDecreasing struct {
 }
 
-func (r RateAlgorithmDecreasing) calculate(month int, loan Loan, overpay OverpayAlgorithm, rateSummaries []RateSummary) RateSummary {
-	initialLoanThisMonth := loan.CalculateConstLoan()
-
+func (r RateAlgorithmDecreasing) calculate(month int, loan Loan, overpay OverpayAlgorithm, savings SavingsAlgorithm, rateSummaries []RateSummary) RateSummary {
 	interestRate := loan.FindCurrentInterestRate(month)
 
 	remainingLoanToBePaid := loan.Value
 	totalLoanPaid := decimal.Zero
 	totalInterestPaid := decimal.Zero
+	totalSaved := decimal.Zero
 
 	if len(rateSummaries) > 0 {
 		lastRateSummary := rateSummaries[len(rateSummaries)-1]
@@ -20,10 +19,15 @@ func (r RateAlgorithmDecreasing) calculate(month int, loan Loan, overpay Overpay
 		remainingLoanToBePaid = lastRateSummary.RemainingLoanToBePaid
 		totalLoanPaid = lastRateSummary.Total.Loan
 		totalInterestPaid = lastRateSummary.Total.Interest
+		totalSaved = lastRateSummary.SavingsLeftThisMonth
 	}
 
+	initialLoanThisMonth := loan.CalculateConstLoan()
 	initialInterestThisMonth := remainingLoanToBePaid.Mul(interestRate.MonthPercent())
-	totalPaidThisMonth := overpay.Overpay(month, initialLoanThisMonth, initialInterestThisMonth)
+
+	savedThisMonth := savings.Savings(month, initialLoanThisMonth, initialInterestThisMonth)
+
+	totalPaidThisMonth, savingsLeftThisMonth := overpay.Overpay(month, initialLoanThisMonth, initialInterestThisMonth, savedThisMonth.Add(totalSaved))
 	paidLoanThisMonth := totalPaidThisMonth.Sub(initialInterestThisMonth)
 
 	if paidLoanThisMonth.GreaterThan(remainingLoanToBePaid) {
@@ -53,6 +57,7 @@ func (r RateAlgorithmDecreasing) calculate(month int, loan Loan, overpay Overpay
 			Loan:     totalLoanPaid,
 			Interest: totalInterestPaid,
 		},
+		SavingsLeftThisMonth:  savingsLeftThisMonth,
 		CurrentMonth:          month,
 		RemainingLoanToBePaid: remainingLoanToBePaid,
 	}

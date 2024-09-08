@@ -31,13 +31,14 @@ func main() {
 	}
 
 	//overpay := overPayFlatTotal(5000)
-	overpay := OverpayConst{ConstValue: decimal.NewFromInt(0)}
+	overpay := OverpayConst{}
+	savings := SavingsConst{ConstValue: decimal.NewFromInt(0)}
 
 	var rates []RateSummary
 	//periodRates := listRatesWithConstantPesimissitc(loan, overpay)
 	//periodRates := listRatesWithDecreasing(loan, overpay)
 
-	periodRates := listRatesWithAlgorithm(loan, RateAlgorithmDecreasing{}, overpay)
+	periodRates := listRatesWithAlgorithm(loan, RateAlgorithmDecreasing{}, overpay, savings)
 
 	rates = append(rates, periodRates...)
 

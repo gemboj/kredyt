@@ -19,9 +19,10 @@ func Test_RateAlgDec(t *testing.T) {
 		},
 	}
 
-	overpay := OverpayConst{ConstValue: decimal.NewFromInt(0)}
+	overpay := OverpayConst{}
+	savings := SavingsConst{}
 
-	periodRates := listRatesWithAlgorithm(loan, RateAlgorithmDecreasing{}, overpay)
+	periodRates := listRatesWithAlgorithm(loan, RateAlgorithmDecreasing{}, overpay, savings)
 
 	assert.DeepEqual(t, decimal.NewFromFloat(42083.33), round(periodRates[len(periodRates)-1].Total.Interest))
 }
@@ -42,9 +43,10 @@ func Test_RateAlgDec_changingInterest(t *testing.T) {
 		},
 	}
 
-	overpay := OverpayConst{ConstValue: decimal.NewFromInt(0)}
+	overpay := OverpayConst{}
+	savings := SavingsConst{}
 
-	periodRates := listRatesWithAlgorithm(loan, RateAlgorithmDecreasing{}, overpay)
+	periodRates := listRatesWithAlgorithm(loan, RateAlgorithmDecreasing{}, overpay, savings)
 
 	assert.DeepEqual(t, decimal.NewFromFloat(52708.33), round(periodRates[len(periodRates)-1].Total.Interest))
 }
@@ -61,9 +63,10 @@ func Test_RateAlgDec_overpayConst(t *testing.T) {
 		},
 	}
 
-	overpay := OverpayConst{ConstValue: decimal.NewFromInt(1000)}
+	overpay := OverpayConst{}
+	savings := SavingsConst{ConstValue: decimal.NewFromInt(1000)}
 
-	periodRates := listRatesWithAlgorithm(loan, RateAlgorithmDecreasing{}, overpay)
+	periodRates := listRatesWithAlgorithm(loan, RateAlgorithmDecreasing{}, overpay, savings)
 
 	assert.DeepEqual(t, decimal.NewFromFloat(21250.00), round(periodRates[len(periodRates)-1].Total.Interest))
 }
