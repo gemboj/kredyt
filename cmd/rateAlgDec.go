@@ -2,10 +2,10 @@ package main
 
 import "github.com/shopspring/decimal"
 
-type rateAlgorithmDecreasing struct {
+type RateAlgorithmDecreasing struct {
 }
 
-func (r rateAlgorithmDecreasing) calculate(month int, loan Loan, overpay OverpayAlgorithm, rateSummaries []RateSummary) RateSummary {
+func (r RateAlgorithmDecreasing) calculate(month int, loan Loan, overpay OverpayAlgorithm, rateSummaries []RateSummary) RateSummary {
 	initialLoanThisMonth := loan.CalculateConstLoan()
 
 	interestRate := loan.FindCurrentInterestRate(month)
@@ -15,7 +15,8 @@ func (r rateAlgorithmDecreasing) calculate(month int, loan Loan, overpay Overpay
 	totalInterestPaid := decimal.Zero
 
 	if len(rateSummaries) > 0 {
-		lastRateSummary := rateSummaries[len(rateSummaries)]
+		lastRateSummary := rateSummaries[len(rateSummaries)-1]
+
 		remainingLoanToBePaid = lastRateSummary.RemainingLoanToBePaid
 		totalLoanPaid = lastRateSummary.Total.Loan
 		totalInterestPaid = lastRateSummary.Total.Interest

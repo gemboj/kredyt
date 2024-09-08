@@ -20,16 +20,12 @@ import (
 
 func main() {
 	loan := Loan{
-		Value:  decimal.NewFromInt(330000),
-		Length: NewLoanLengthFromYears(7),
+		Value:  decimal.NewFromInt(100_000),
+		Length: NewLoanLengthFromMonths(100),
 		InterestRates: []InterestConfig{
 			{
-				yearPercent: decimal.NewFromFloat(0.067),
+				yearPercent: decimal.NewFromFloat(0.1),
 				sinceMonth:  0,
-			},
-			{
-				yearPercent: decimal.NewFromFloat(0.0766),
-				sinceMonth:  60,
 			},
 		},
 	}
@@ -39,7 +35,9 @@ func main() {
 
 	var rates []RateSummary
 	//periodRates := listRatesWithConstantPesimissitc(loan, overpay)
-	periodRates := listRatesWithDecreasing(loan, overpay)
+	//periodRates := listRatesWithDecreasing(loan, overpay)
+
+	periodRates := listRatesWithAlgorithm(loan, RateAlgorithmDecreasing{}, overpay)
 
 	rates = append(rates, periodRates...)
 
@@ -69,4 +67,8 @@ func main() {
 	//}
 	ratesJson, _ := json.MarshalIndent(ratesSummary, "", "  ")
 	fmt.Printf("RateList: %v\n", string(ratesJson))
+}
+
+func percent(p float64) decimal.Decimal {
+	return decimal.NewFromFloat(p).Div(decimal.NewFromInt(100))
 }
