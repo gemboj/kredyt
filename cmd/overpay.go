@@ -3,7 +3,7 @@ package main
 import "github.com/shopspring/decimal"
 
 type OverpayAlgorithm interface {
-	Overpay(decimal.Decimal, decimal.Decimal) decimal.Decimal
+	Overpay(int, decimal.Decimal, decimal.Decimal) decimal.Decimal
 }
 
 // OverPayConst defines overpay as a constant value added to LoanThisMonth every month.
@@ -11,10 +11,28 @@ type OverpayAlgorithm interface {
 // if the rateThisMonth is 500, it means we will pay 1500 instead this month, thus the overpay equals 1000.
 type OverpayConst struct {
 	ConstValue decimal.Decimal
+
+	// By default, if PeriodMonths == 0, overpay every month.
+	// Periodmonths == 0 is the same as Periodmonths == 1
+	PeriodMonths int
+
+	// Commision cost paid for every overpay. Should be bigger than ConstValue.
+	Commission decimal.Decimal
 }
 
-func (o OverpayConst) Overpay(loanThisMonth, interest decimal.Decimal) decimal.Decimal {
-	return loanThisMonth.Add(interest).Add(o.ConstValue)
+func (o OverpayConst) Overpay(month int, loanThisMonth, interestThisMonth decimal.Decimal) decimal.Decimal {
+	totalThisMonth := interestThisMonth.Add(loanThisMonth)
+
+	periodMonths := o.PeriodMonths
+	if periodMonths == 0 {
+		periodMonths = 1
+	}
+
+	if month%periodMonths == 1 {
+		return totalThisMonth
+	}
+
+	return totalThisMonth.Add(o.ConstValue).Sub(o.Commission)
 }
 
 // OverPayFlatTotal defines overpay as a flat value that will be paid as LoanThisMonth.
@@ -23,12 +41,30 @@ func (o OverpayConst) Overpay(loanThisMonth, interest decimal.Decimal) decimal.D
 // of course the toal value paid needs to be higher than interest.
 type OverpayFlatTotal struct {
 	FlatTotalValue decimal.Decimal
+
+	// By default, if PeriodMonths == 0, overpay every month.
+	// Periodmonths == 0 is the same as Periodmonths == 1
+	PeriodMonths int
+
+	// Commision cost paid for every overpay. Should be bigger than ConstValue.
+	Commission decimal.Decimal
 }
 
-func (o OverpayFlatTotal) Overpay(_, interest decimal.Decimal) decimal.Decimal {
-	if o.FlatTotalValue.LessThan(interest) {
-		return interest
+func (o OverpayFlatTotal) Overpay(month int, loanThisMonth, interestThisMonth decimal.Decimal) decimal.Decimal {
+	totalThisMonth := interestThisMonth.Add(loanThisMonth)
+
+	periodMonths := o.PeriodMonths
+	if periodMonths == 0 {
+		periodMonths = 1
 	}
 
-	return o.FlatTotalValue
+	if month%periodMonths == 1 {
+		return totalThisMonth
+	}
+
+	if o.FlatTotalValue.LessThan(totalThisMonth) {
+		return totalThisMonth
+	}
+
+	return o.FlatTotalValue.Sub(o.Commission)
 }

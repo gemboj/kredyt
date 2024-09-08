@@ -33,7 +33,7 @@ func listRatesWithConstantPesimissitc(loan Loan, overpay OverpayAlgorithm) []Rat
 
 		initialInterestThisMonth := monthInterest(remainingLoanToBePaid, interestRate.yearPercent)
 		initialLoanThisMonth := constantRateValue.Value.Sub(initialInterestThisMonth)
-		totalPaidThisMonth := overpay.Overpay(initialLoanThisMonth, initialInterestThisMonth)
+		totalPaidThisMonth := overpay.Overpay(i, initialLoanThisMonth, initialInterestThisMonth)
 		paidLoanThisMonth := totalPaidThisMonth.Sub(initialInterestThisMonth)
 
 		if paidLoanThisMonth.GreaterThan(remainingLoanToBePaid) {
@@ -88,7 +88,7 @@ func listRatesWithDecreasing(loan Loan, overpay OverpayAlgorithm) []RateSummary 
 		initialInterestThisMonth := remainingLoanToBePaid.Mul(interestRate.MonthPercent())
 		initialLoanThisMonth := loan.CalculateConstLoan()
 
-		totalPaidThisMonth := overpay.Overpay(initialLoanThisMonth, initialInterestThisMonth)
+		totalPaidThisMonth := overpay.Overpay(i, initialLoanThisMonth, initialInterestThisMonth)
 		paidLoanThisMonth := totalPaidThisMonth.Sub(initialInterestThisMonth)
 
 		if paidLoanThisMonth.GreaterThan(remainingLoanToBePaid) {

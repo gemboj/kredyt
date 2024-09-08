@@ -35,7 +35,7 @@ func (r RateAlgorithmConstantPessimistic) calculate(month int, loan Loan, overpa
 
 	initialInterestThisMonth := monthInterest(remainingLoanToBePaid, interestRate.yearPercent)
 	initialLoanThisMonth := constantRateValue.Value.Sub(initialInterestThisMonth)
-	totalPaidThisMonth := overpay.Overpay(initialLoanThisMonth, initialInterestThisMonth)
+	totalPaidThisMonth := overpay.Overpay(month, initialLoanThisMonth, initialInterestThisMonth)
 	paidLoanThisMonth := totalPaidThisMonth.Sub(initialInterestThisMonth)
 
 	if paidLoanThisMonth.GreaterThan(remainingLoanToBePaid) {

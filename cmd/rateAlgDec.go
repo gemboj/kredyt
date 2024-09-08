@@ -23,7 +23,7 @@ func (r RateAlgorithmDecreasing) calculate(month int, loan Loan, overpay Overpay
 	}
 
 	initialInterestThisMonth := remainingLoanToBePaid.Mul(interestRate.MonthPercent())
-	totalPaidThisMonth := overpay.Overpay(initialLoanThisMonth, initialInterestThisMonth)
+	totalPaidThisMonth := overpay.Overpay(month, initialLoanThisMonth, initialInterestThisMonth)
 	paidLoanThisMonth := totalPaidThisMonth.Sub(initialInterestThisMonth)
 
 	if paidLoanThisMonth.GreaterThan(remainingLoanToBePaid) {
