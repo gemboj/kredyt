@@ -8,7 +8,7 @@ type Loan struct {
 
 	Value         decimal.Decimal
 	Length        LoanLength
-	InterestRates []InterestConfig
+	InterestRates []InterestConfig `json:"-"`
 }
 
 func (l Loan) CalculateConstLoan() decimal.Decimal {

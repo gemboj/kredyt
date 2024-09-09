@@ -24,7 +24,7 @@ var (
 	baselineLoan = Loan{
 		Mortgage: decimal.NewFromInt(930_000),
 		Value:    decimal.NewFromInt(330_000),
-		Length:   NewLoanLengthFromMonths(120),
+		Length:   NewLoanLengthFromMonths(180),
 	}
 
 	baselineAlgorithm = RateAlgorithmConstantPessimistic{}
@@ -179,6 +179,9 @@ type ScenarioSummary struct {
 }
 
 func displayScenarioComparion(scenarios []ScenarioSummary) {
+	fmt.Printf("Length (months): %v\n", baselineLoan.Length.Months())
+	fmt.Printf("%v\n", baselineAlgorithm)
+
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
 	t.AppendHeader(table.Row{"#", "Name", "Total", "TotalInterest", "Months", "FirstRate", "MiscCosts"})

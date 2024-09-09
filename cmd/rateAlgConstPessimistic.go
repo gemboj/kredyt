@@ -5,6 +5,10 @@ import "github.com/shopspring/decimal"
 type RateAlgorithmConstantPessimistic struct {
 }
 
+func (r RateAlgorithmConstantPessimistic) String() string {
+	return "RateAlgorithmConstantPessimistic"
+}
+
 func (r RateAlgorithmConstantPessimistic) calculate(month int, scenario ScenarioSummary) RateSummary {
 	interestRate := scenario.Scenario.Loan.FindCurrentInterestRate(month)
 
