@@ -21,10 +21,18 @@ import (
 )
 
 var (
-	loanBaselineVelo = Loan{
+	baselineLoan = Loan{
 		Mortgage: decimal.NewFromInt(930_000),
 		Value:    decimal.NewFromInt(330_000),
-		Length:   NewLoanLengthFromMonths(180),
+		Length:   NewLoanLengthFromMonths(120),
+	}
+
+	baselineAlgorithm = RateAlgorithmConstantPessimistic{}
+
+	loanBaselineVelo = Loan{
+		Mortgage: baselineLoan.Mortgage,
+		Value:    baselineLoan.Value,
+		Length:   baselineLoan.Length,
 		InterestRates: []InterestConfig{
 			{
 				yearPercent: percent(6.76),
@@ -43,9 +51,9 @@ var (
 	}
 
 	loanBaselineING = Loan{
-		Mortgage: decimal.NewFromInt(930_000),
-		Value:    decimal.NewFromInt(330_000),
-		Length:   NewLoanLengthFromMonths(180),
+		Mortgage: baselineLoan.Mortgage,
+		Value:    baselineLoan.Value,
+		Length:   baselineLoan.Length,
 		InterestRates: []InterestConfig{
 			{
 				yearPercent: percent(7.07),
@@ -63,40 +71,82 @@ var (
 		MiscCostsFromLoan{Percentage: percent(0.0096)},
 		MiscCostsSingle{Cost: decimal.NewFromInt(560)},
 	}
+
+	loanBaselinemBank = Loan{
+		Mortgage: baselineLoan.Mortgage,
+		Value:    baselineLoan.Value,
+		Length:   baselineLoan.Length,
+		InterestRates: []InterestConfig{
+			{
+				yearPercent: percent(6.7),
+				sinceMonth:  0,
+			},
+			{
+				yearPercent: percent(7.95),
+				sinceMonth:  60,
+			},
+		},
+	}
+
+	miscCostsBaselinemBank = []MiscCostsAlgorithm{
+		MiscCostsFromRemainingLoan{Percentage: percent(0.05), UpToMonth: 60},
+		MiscCostsFromMortgage{Percentage: percent(0.0065)},
+		MiscCostsSingle{Cost: decimal.NewFromInt(400)},
+	}
 )
 
 func main() {
 	scenarios := []Scenario{
-		//		{
-		//			Loan:          loanBaselineING,
-		//			RateAlgorithm: RateAlgorithmConstantPessimistic{},
-		//			Overpay:       Overpay{},
-		//			Savings:       SavingsConst{},
-		//			MiscCosts:     miscCostsBaselineING,
-		//		},
-		//		{
-		//			Loan:          loanBaselineING,
-		//			RateAlgorithm: RateAlgorithmConstantPessimistic{},
-		//			Overpay:       Overpay{},
-		//			Savings:       SavingsFlatTotal{Value: decimal.NewFromInt(5000)},
-		//			MiscCosts:     miscCostsBaselineING,
-		//		},
 		{
+			Name:          "Velo baseline",
 			Loan:          loanBaselineVelo,
-			RateAlgorithm: RateAlgorithmConstantPessimistic{},
+			RateAlgorithm: baselineAlgorithm,
 			Overpay:       Overpay{Commission: decimal.NewFromInt(200)},
 			Savings:       SavingsFlatTotal{},
 			MiscCosts:     miscCostsBaselineVelo,
 		},
-		//		findOptimalOverpayScenarioWithCommision(
-		//			Scenario{
-		//				Loan:          loanBaselineVelo,
-		//				RateAlgorithm: RateAlgorithmConstantPessimistic{},
-		//				Overpay:       Overpay{Commission: decimal.NewFromInt(200)},
-		//				Savings:       SavingsFlatTotal{Value: decimal.NewFromInt(5000)},
-		//				MiscCosts:     miscCostsBaselineVelo,
-		//			},
-		//		).Scenario,
+		findOptimalOverpayScenarioWithCommision(
+			Scenario{
+				Name:          "Velo optimal overpay 5000",
+				Loan:          loanBaselineVelo,
+				RateAlgorithm: baselineAlgorithm,
+				Overpay:       Overpay{Commission: decimal.NewFromInt(200)},
+				Savings:       SavingsFlatTotal{Value: decimal.NewFromInt(5000)},
+				MiscCosts:     miscCostsBaselineVelo,
+			},
+		).Scenario,
+		{
+			Name:          "ING baseline",
+			Loan:          loanBaselineING,
+			RateAlgorithm: baselineAlgorithm,
+			Overpay:       Overpay{},
+			Savings:       SavingsConst{},
+			MiscCosts:     miscCostsBaselineING,
+		},
+		{
+			Name:          "ING overpay 5000",
+			Loan:          loanBaselineING,
+			RateAlgorithm: baselineAlgorithm,
+			Overpay:       Overpay{},
+			Savings:       SavingsFlatTotal{Value: decimal.NewFromInt(5000)},
+			MiscCosts:     miscCostsBaselineING,
+		},
+		{
+			Name:          "mBank baseline",
+			Loan:          loanBaselinemBank,
+			RateAlgorithm: baselineAlgorithm,
+			Overpay:       Overpay{},
+			Savings:       SavingsFlatTotal{},
+			MiscCosts:     miscCostsBaselinemBank,
+		},
+		{
+			Name:          "mBank overpay 5000",
+			Loan:          loanBaselinemBank,
+			RateAlgorithm: baselineAlgorithm,
+			Overpay:       Overpay{},
+			Savings:       SavingsFlatTotal{Value: decimal.NewFromInt(5000)},
+			MiscCosts:     miscCostsBaselinemBank,
+		},
 	}
 
 	scenarioSummaries := []ScenarioSummary{}
@@ -115,6 +165,7 @@ func main() {
 }
 
 type Scenario struct {
+	Name          string
 	Loan          Loan
 	Overpay       Overpay
 	Savings       SavingsAlgorithm
@@ -130,18 +181,23 @@ type ScenarioSummary struct {
 func displayScenarioComparion(scenarios []ScenarioSummary) {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
-	t.AppendHeader(table.Row{"#", "Total", "TotalInterest", "Months", "FirstRate", "FirstRateOverpay", "OverpayPeriod", "MiscCosts"})
+	t.AppendHeader(table.Row{"#", "Name", "Total", "TotalInterest", "Months", "FirstRate", "MiscCosts"})
 	for i, s := range scenarios {
 		rateLast := s.Rates[len(s.Rates)-1]
 		rateFirst := s.Rates[0]
+
+		name := s.Scenario.Name
+		if s.Scenario.Overpay.PeriodMonths != 0 {
+			name += fmt.Sprintf(" /%d", s.Scenario.Overpay.PeriodMonths)
+		}
+
 		t.AppendRow([]interface{}{
 			i,
+			name,
 			sum(append(rateLast.MiscCostsTotal, rateLast.Total.Interest)...).Round(2),
 			rateLast.Total.Interest.Round(2),
 			s.Scenario.Loan.Length.Months(),
 			rateFirst.InitalRate.Total().Round(2),
-			rateFirst.PaidRate.Total().Sub(rateFirst.InitalRate.Total()).Round(2),
-			s.Scenario.Overpay.PeriodMonths,
 			roundSlice(rateLast.MiscCostsTotal),
 		})
 	}
