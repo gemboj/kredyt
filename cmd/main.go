@@ -97,48 +97,48 @@ var (
 
 func main() {
 	scenarios := []Scenario{
-		{
-			Name:          "Velo baseline",
-			Loan:          loanBaselineVelo,
-			RateAlgorithm: baselineAlgorithm,
-			Overpay:       Overpay{Commission: decimal.NewFromInt(200)},
-			Savings:       SavingsFlatTotal{},
-			MiscCosts:     miscCostsBaselineVelo,
-		},
-		findOptimalOverpayScenarioWithCommision(
-			Scenario{
-				Name:          "Velo optimal overpay 5000",
-				Loan:          loanBaselineVelo,
-				RateAlgorithm: baselineAlgorithm,
-				Overpay:       Overpay{Commission: decimal.NewFromInt(200)},
-				Savings:       SavingsFlatTotal{Value: decimal.NewFromInt(5000)},
-				MiscCosts:     miscCostsBaselineVelo,
-			},
-		).Scenario,
-		{
-			Name:          "ING baseline",
-			Loan:          loanBaselineING,
-			RateAlgorithm: baselineAlgorithm,
-			Overpay:       Overpay{},
-			Savings:       SavingsConst{},
-			MiscCosts:     miscCostsBaselineING,
-		},
-		{
-			Name:          "ING overpay 5000",
-			Loan:          loanBaselineING,
-			RateAlgorithm: baselineAlgorithm,
-			Overpay:       Overpay{},
-			Savings:       SavingsFlatTotal{Value: decimal.NewFromInt(5000)},
-			MiscCosts:     miscCostsBaselineING,
-		},
-		{
-			Name:          "mBank baseline",
-			Loan:          loanBaselinemBank,
-			RateAlgorithm: baselineAlgorithm,
-			Overpay:       Overpay{},
-			Savings:       SavingsFlatTotal{},
-			MiscCosts:     miscCostsBaselinemBank,
-		},
+		//	{
+		//		Name:          "Velo baseline",
+		//		Loan:          loanBaselineVelo,
+		//		RateAlgorithm: baselineAlgorithm,
+		//		Overpay:       Overpay{Commission: decimal.NewFromInt(200)},
+		//		Savings:       SavingsFlatTotal{},
+		//		MiscCosts:     miscCostsBaselineVelo,
+		//	},
+		//	findOptimalOverpayScenarioWithCommision(
+		//		Scenario{
+		//			Name:          "Velo optimal overpay 5000",
+		//			Loan:          loanBaselineVelo,
+		//			RateAlgorithm: baselineAlgorithm,
+		//			Overpay:       Overpay{Commission: decimal.NewFromInt(200)},
+		//			Savings:       SavingsFlatTotal{Value: decimal.NewFromInt(5000)},
+		//			MiscCosts:     miscCostsBaselineVelo,
+		//		},
+		//	).Scenario,
+		//	{
+		//		Name:          "ING baseline",
+		//		Loan:          loanBaselineING,
+		//		RateAlgorithm: baselineAlgorithm,
+		//		Overpay:       Overpay{},
+		//		Savings:       SavingsConst{},
+		//		MiscCosts:     miscCostsBaselineING,
+		//	},
+		//	{
+		//		Name:          "ING overpay 5000",
+		//		Loan:          loanBaselineING,
+		//		RateAlgorithm: baselineAlgorithm,
+		//		Overpay:       Overpay{},
+		//		Savings:       SavingsFlatTotal{Value: decimal.NewFromInt(5000)},
+		//		MiscCosts:     miscCostsBaselineING,
+		//	},
+		//	{
+		//		Name:          "mBank baseline",
+		//		Loan:          loanBaselinemBank,
+		//		RateAlgorithm: baselineAlgorithm,
+		//		Overpay:       Overpay{},
+		//		Savings:       SavingsFlatTotal{},
+		//		MiscCosts:     miscCostsBaselinemBank,
+		//	},
 		{
 			Name:          "mBank overpay 5000",
 			Loan:          loanBaselinemBank,
@@ -159,8 +159,8 @@ func main() {
 		})
 	}
 
-	displayScenarioComparion(scenarioSummaries)
-	//	displayScenarioDetails(scenarioSummaries)
+	//displayScenarioComparion(scenarioSummaries)
+	displayScenarioDetails(scenarioSummaries)
 	//	displayScenarioInDepth(scenarioSummaries)
 }
 

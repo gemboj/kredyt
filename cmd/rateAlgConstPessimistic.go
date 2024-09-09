@@ -40,7 +40,10 @@ func (r RateAlgorithmConstantPessimistic) calculate(month int, scenario Scenario
 	initialInterestThisMonth := monthInterest(remainingLoanToBePaid, interestRate.yearPercent)
 	initialLoanThisMonth := constantRateValue.Sub(initialInterestThisMonth)
 
-	savedThisMonth := scenario.Scenario.Savings.Savings(month, initialLoanThisMonth, initialInterestThisMonth)
+	savedThisMonth := decimal.Zero
+	if scenario.Scenario.Savings != nil {
+		savedThisMonth = scenario.Scenario.Savings.Savings(month, initialLoanThisMonth, initialInterestThisMonth)
+	}
 
 	totalPaidThisMonth, savingsLeftThisMonth := scenario.Scenario.Overpay.Overpay(month, initialLoanThisMonth, initialInterestThisMonth, savedThisMonth.Add(totalSaved))
 	paidLoanThisMonth := totalPaidThisMonth.Sub(initialInterestThisMonth)
