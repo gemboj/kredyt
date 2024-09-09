@@ -200,7 +200,7 @@ func displayScenarioComparion(scenarios []ScenarioSummary) {
 			sum(append(rateLast.MiscCostsTotal, rateLast.Total.Interest)...).Round(2),
 			rateLast.Total.Interest.Round(2),
 			rateLast.CurrentMonth + 1,
-			rateFirst.InitalRate.Total().Round(2),
+			sum(append(rateFirst.MiscCosts, rateFirst.InitalRate.Total().Round(2))...),
 			roundSlice(rateLast.MiscCostsTotal),
 		})
 	}
