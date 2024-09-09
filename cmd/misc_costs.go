@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/shopspring/decimal"
 )
 
@@ -33,17 +31,73 @@ func (m MiscCostsSingle) Calculate(month int, _ ScenarioSummary) decimal.Decimal
 type MiscCostsFromRemainingLoan struct {
 	Percentage decimal.Decimal
 
+	RecalculateBaseCostEveryMonth int
+	CalculateCostEveryMonth       int
+	UpToMonth                     int
+}
+
+func (m MiscCostsFromRemainingLoan) Calculate(month int, s ScenarioSummary) decimal.Decimal {
+	calculateCostEveryMonth := m.CalculateCostEveryMonth
+	recalculateBaseCostEveryMonth := m.RecalculateBaseCostEveryMonth
+	upToMonth := m.UpToMonth
+
+	if calculateCostEveryMonth == 0 {
+		calculateCostEveryMonth = 1
+	}
+
+	if recalculateBaseCostEveryMonth == 0 {
+		recalculateBaseCostEveryMonth = 1
+	}
+
+	if upToMonth == 0 {
+		upToMonth = 999999
+	}
+
+	if month >= upToMonth {
+		return decimal.Zero
+	}
+
+	if (month+1)%calculateCostEveryMonth != 0 {
+		return decimal.Zero
+	}
+
+	value := s.Scenario.Loan.Value
+	if len(s.Rates) != 0 {
+		//value = s.Rates[len(s.Rates)-1].RemainingLoanToBePaid
+		basePeriod := len(s.Rates) / recalculateBaseCostEveryMonth
+
+		rateIndex := recalculateBaseCostEveryMonth*basePeriod - 1
+		if rateIndex >= 0 {
+			baseRate := s.Rates[rateIndex]
+			value = baseRate.RemainingLoanToBePaid
+		}
+
+	}
+
+	cost := value.Mul(m.Percentage)
+	return cost.Round(2)
+}
+
+type MiscCostsFromMortgage struct {
+	Percentage decimal.Decimal
+
 	MonthPeriod int
 	UpToMonth   int
 }
 
-func (m MiscCostsFromRemainingLoan) Calculate(month int, s ScenarioSummary) decimal.Decimal {
+func (m MiscCostsFromMortgage) Calculate(month int, s ScenarioSummary) decimal.Decimal {
 	monthPeriod := m.MonthPeriod
+	upToMonth := m.UpToMonth
+
 	if monthPeriod == 0 {
 		monthPeriod = 1
 	}
 
-	if month >= m.UpToMonth {
+	if upToMonth == 0 {
+		upToMonth = 999999
+	}
+
+	if month >= upToMonth {
 		return decimal.Zero
 	}
 
@@ -51,12 +105,5 @@ func (m MiscCostsFromRemainingLoan) Calculate(month int, s ScenarioSummary) deci
 		return decimal.Zero
 	}
 
-	value := s.Scenario.Loan.Value
-	if len(s.Rates) != 0 {
-		value = s.Rates[len(s.Rates)-1].RemainingLoanToBePaid
-	}
-
-	cost := value.Mul(m.Percentage)
-	fmt.Printf("month: %d, cost: %s \n", month, cost.Round(2))
-	return cost
+	return s.Scenario.Loan.Mortgage.Mul(m.Percentage).Round(2)
 }

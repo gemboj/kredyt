@@ -20,10 +20,32 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-func main() {
-	loanBaseline := Loan{
-		Value:  decimal.NewFromInt(330_000),
-		Length: NewLoanLengthFromMonths(180),
+var (
+	loanBaselineVelo = Loan{
+		Mortgage: decimal.NewFromInt(930_000),
+		Value:    decimal.NewFromInt(330_000),
+		Length:   NewLoanLengthFromMonths(180),
+		InterestRates: []InterestConfig{
+			{
+				yearPercent: percent(6.76),
+				sinceMonth:  0,
+			},
+			{
+				yearPercent: percent(7.42),
+				sinceMonth:  60,
+			},
+		},
+	}
+
+	miscCostsBaselineVelo = []MiscCostsAlgorithm{
+		MiscCostsFromRemainingLoan{Percentage: percent(0.030129), RecalculateBaseCostEveryMonth: 12},
+		MiscCostsFromMortgage{Percentage: percent(0.0426), MonthPeriod: 12},
+	}
+
+	loanBaselineING = Loan{
+		Mortgage: decimal.NewFromInt(930_000),
+		Value:    decimal.NewFromInt(330_000),
+		Length:   NewLoanLengthFromMonths(180),
 		InterestRates: []InterestConfig{
 			{
 				yearPercent: percent(7.07),
@@ -36,45 +58,45 @@ func main() {
 		},
 	}
 
-	miscCostsBaseline := []MiscCostsAlgorithm{
-		MiscCostsFromLoan{Percentage: percent(0.0096)},
+	miscCostsBaselineING = []MiscCostsAlgorithm{
 		MiscCostsFromRemainingLoan{Percentage: percent(0.035), UpToMonth: 36},
+		MiscCostsFromLoan{Percentage: percent(0.0096)},
 		MiscCostsSingle{Cost: decimal.NewFromInt(560)},
 	}
+)
 
-	optimalScenarioWithComission := findOptimalOverpayScenarioWithCommision(
-		Scenario{
-			Loan:          loanBaseline,
-			RateAlgorithm: RateAlgorithmConstantPessimistic{},
-			Overpay:       Overpay{Commission: decimal.NewFromInt(200)},
-			Savings:       SavingsFlatTotal{Value: decimal.NewFromInt(5000)},
-			MiscCosts:     miscCostsBaseline,
-		},
-	)
-
+func main() {
 	scenarios := []Scenario{
+		//		{
+		//			Loan:          loanBaselineING,
+		//			RateAlgorithm: RateAlgorithmConstantPessimistic{},
+		//			Overpay:       Overpay{},
+		//			Savings:       SavingsConst{},
+		//			MiscCosts:     miscCostsBaselineING,
+		//		},
+		//		{
+		//			Loan:          loanBaselineING,
+		//			RateAlgorithm: RateAlgorithmConstantPessimistic{},
+		//			Overpay:       Overpay{},
+		//			Savings:       SavingsFlatTotal{Value: decimal.NewFromInt(5000)},
+		//			MiscCosts:     miscCostsBaselineING,
+		//		},
 		{
-			Loan:          loanBaseline,
-			RateAlgorithm: RateAlgorithmConstantPessimistic{},
-			Overpay:       Overpay{},
-			Savings:       SavingsConst{Value: decimal.NewFromInt(0)},
-			MiscCosts:     miscCostsBaseline,
-		},
-		{
-			Loan:          loanBaseline,
+			Loan:          loanBaselineVelo,
 			RateAlgorithm: RateAlgorithmConstantPessimistic{},
 			Overpay:       Overpay{Commission: decimal.NewFromInt(200)},
 			Savings:       SavingsFlatTotal{},
-			MiscCosts:     miscCostsBaseline,
+			MiscCosts:     miscCostsBaselineVelo,
 		},
-		{
-			Loan:          loanBaseline,
-			RateAlgorithm: RateAlgorithmConstantPessimistic{},
-			Overpay:       Overpay{},
-			Savings:       SavingsFlatTotal{Value: decimal.NewFromInt(5000)},
-			MiscCosts:     miscCostsBaseline,
-		},
-		optimalScenarioWithComission.Scenario,
+		//		findOptimalOverpayScenarioWithCommision(
+		//			Scenario{
+		//				Loan:          loanBaselineVelo,
+		//				RateAlgorithm: RateAlgorithmConstantPessimistic{},
+		//				Overpay:       Overpay{Commission: decimal.NewFromInt(200)},
+		//				Savings:       SavingsFlatTotal{Value: decimal.NewFromInt(5000)},
+		//				MiscCosts:     miscCostsBaselineVelo,
+		//			},
+		//		).Scenario,
 	}
 
 	scenarioSummaries := []ScenarioSummary{}

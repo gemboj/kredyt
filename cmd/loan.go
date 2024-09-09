@@ -3,6 +3,9 @@ package main
 import "github.com/shopspring/decimal"
 
 type Loan struct {
+	// total value of whatever you are buying
+	Mortgage decimal.Decimal
+
 	Value         decimal.Decimal
 	Length        LoanLength
 	InterestRates []InterestConfig
