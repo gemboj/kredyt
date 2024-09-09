@@ -29,24 +29,7 @@ func (r RateAlgorithmDecreasing) calculate(month int, scenario ScenarioSummary) 
 	initialLoanThisMonth := scenario.Scenario.Loan.CalculateConstLoan()
 	initialInterestThisMonth := remainingLoanToBePaid.Mul(interestRate.MonthPercent())
 
-	savedThisMonth := scenario.Scenario.Savings.Savings(month, initialLoanThisMonth, initialInterestThisMonth)
-
-	totalPaidThisMonth, savingsLeftThisMonth := scenario.Scenario.Overpay.Overpay(month, initialLoanThisMonth, initialInterestThisMonth, savedThisMonth.Add(totalSaved))
-	paidLoanThisMonth := totalPaidThisMonth.Sub(initialInterestThisMonth)
-
-	if paidLoanThisMonth.GreaterThan(remainingLoanToBePaid) {
-		paidLoanThisMonth = remainingLoanToBePaid
-	}
-
-	totalLoanPaid = totalLoanPaid.Add(paidLoanThisMonth)
-	totalInterestPaid = totalInterestPaid.Add(initialInterestThisMonth)
-
-	remainingLoanToBePaid = scenario.Scenario.Loan.Value.Sub(totalLoanPaid)
-
-	overpaid := paidLoanThisMonth.Sub(initialLoanThisMonth)
-	if overpaid.LessThan(decimal.Zero) {
-		overpaid = decimal.Zero
-	}
+	savedThisMonth := scenario.Scenario.Savings.Savings(month, initialLoanThisMonth.Add(initialInterestThisMonth))
 
 	var miscCostsOutputs []MiscCostsOutput
 	for _, miscCost := range scenario.Scenario.MiscCosts {
@@ -69,6 +52,25 @@ func (r RateAlgorithmDecreasing) calculate(month int, scenario ScenarioSummary) 
 		}
 
 		miscCostsTotal[i] = miscCostsTotal[i].Add(miscCost.Value)
+	}
+
+	miscCostSum := sum(miscCosts...)
+
+	totalPaidThisMonth, savingsLeftThisMonth := scenario.Scenario.Overpay.Overpay(month, initialLoanThisMonth.Add(initialInterestThisMonth).Add(miscCostSum), savedThisMonth.Add(totalSaved))
+	paidLoanThisMonth := totalPaidThisMonth.Sub(initialInterestThisMonth).Sub(miscCostSum)
+
+	if paidLoanThisMonth.GreaterThan(remainingLoanToBePaid) {
+		paidLoanThisMonth = remainingLoanToBePaid
+	}
+
+	totalLoanPaid = totalLoanPaid.Add(paidLoanThisMonth)
+	totalInterestPaid = totalInterestPaid.Add(initialInterestThisMonth)
+
+	remainingLoanToBePaid = scenario.Scenario.Loan.Value.Sub(totalLoanPaid)
+
+	overpaid := paidLoanThisMonth.Sub(initialLoanThisMonth)
+	if overpaid.LessThan(decimal.Zero) {
+		overpaid = decimal.Zero
 	}
 
 	return RateSummary{

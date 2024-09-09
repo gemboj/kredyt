@@ -24,6 +24,8 @@ func (r *RateSummary) MarshalJSON() ([]byte, error) {
 		InitalRate            Rate
 		PaidRate              Rate
 		Total                 Rate
+		MiscCosts             []decimal.Decimal
+		MiscCostsTotal        []decimal.Decimal
 		SavingsLeftThisMonth  decimal.Decimal
 		Overpaid              decimal.Decimal
 		CurrentMonth          int
@@ -32,6 +34,8 @@ func (r *RateSummary) MarshalJSON() ([]byte, error) {
 		InitalRate:            r.InitalRate,
 		PaidRate:              r.PaidRate,
 		Total:                 r.Total,
+		MiscCosts:             r.MiscCosts,
+		MiscCostsTotal:        r.MiscCostsTotal,
 		SavingsLeftThisMonth:  round(r.SavingsLeftThisMonth),
 		Overpaid:              round(r.PaidRate.Loan.Sub(r.InitalRate.Loan)),
 		CurrentMonth:          r.CurrentMonth,

@@ -3,7 +3,7 @@ package main
 import "github.com/shopspring/decimal"
 
 type SavingsAlgorithm interface {
-	Savings(int, decimal.Decimal, decimal.Decimal) decimal.Decimal
+	Savings(int, decimal.Decimal) decimal.Decimal
 }
 
 // SavingsConst defines savings as a constant value added to LoanThisMonth every month.
@@ -17,7 +17,7 @@ type SavingsConst struct {
 	PeriodMonths int
 }
 
-func (o SavingsConst) Savings(month int, _, _ decimal.Decimal) decimal.Decimal {
+func (o SavingsConst) Savings(month int, _ decimal.Decimal) decimal.Decimal {
 	periodMonths := o.PeriodMonths
 	if periodMonths == 0 {
 		periodMonths = 1
@@ -42,9 +42,7 @@ type SavingsFlatTotal struct {
 	PeriodMonths int
 }
 
-func (o SavingsFlatTotal) Savings(month int, loanThisMonth, interestThisMonth decimal.Decimal) decimal.Decimal {
-	totalThisMonth := interestThisMonth.Add(loanThisMonth)
-
+func (o SavingsFlatTotal) Savings(month int, totalThisMonth decimal.Decimal) decimal.Decimal {
 	periodMonths := o.PeriodMonths
 	if periodMonths == 0 {
 		periodMonths = 1

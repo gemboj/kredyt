@@ -11,9 +11,7 @@ type Overpay struct {
 	Commission decimal.Decimal
 }
 
-func (o Overpay) Overpay(month int, loanThisMonth, interestThisMonth, savingsToUse decimal.Decimal) (decimal.Decimal, decimal.Decimal) {
-	totalThisMonth := interestThisMonth.Add(loanThisMonth)
-
+func (o Overpay) Overpay(month int, totalThisMonth, savingsToUse decimal.Decimal) (decimal.Decimal, decimal.Decimal) {
 	periodMonths := o.PeriodMonths
 	if periodMonths == 0 {
 		periodMonths = 1

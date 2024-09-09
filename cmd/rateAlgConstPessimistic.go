@@ -40,25 +40,6 @@ func (r RateAlgorithmConstantPessimistic) calculate(month int, scenario Scenario
 	initialInterestThisMonth := monthInterest(remainingLoanToBePaid, interestRate.yearPercent)
 	initialLoanThisMonth := constantRateValue.Sub(initialInterestThisMonth)
 
-	savedThisMonth := scenario.Scenario.Savings.Savings(month, initialLoanThisMonth, initialInterestThisMonth)
-
-	totalPaidThisMonth, savingsLeftThisMonth := scenario.Scenario.Overpay.Overpay(month, initialLoanThisMonth, initialInterestThisMonth, savedThisMonth.Add(totalSaved))
-	paidLoanThisMonth := totalPaidThisMonth.Sub(initialInterestThisMonth)
-
-	if paidLoanThisMonth.GreaterThan(remainingLoanToBePaid) {
-		paidLoanThisMonth = remainingLoanToBePaid
-	}
-
-	totalLoanPaid = totalLoanPaid.Add(paidLoanThisMonth)
-	totalInterestPaid = totalInterestPaid.Add(initialInterestThisMonth)
-
-	remainingLoanToBePaid = scenario.Scenario.Loan.Value.Sub(totalLoanPaid)
-
-	overpaid := paidLoanThisMonth.Add(initialInterestThisMonth).Sub(constantRateValue)
-	if overpaid.LessThan(decimal.NewFromInt(0)) {
-		overpaid = decimal.Zero
-	}
-
 	var miscCostsOutputs []MiscCostsOutput
 	for _, miscCost := range scenario.Scenario.MiscCosts {
 		miscCostOutput := miscCost.Calculate(month, scenario)
@@ -80,6 +61,27 @@ func (r RateAlgorithmConstantPessimistic) calculate(month int, scenario Scenario
 		}
 
 		miscCostsTotal[i] = miscCostsTotal[i].Add(miscCost.Value)
+	}
+
+	miscCostSum := sum(miscCosts...)
+
+	savedThisMonth := scenario.Scenario.Savings.Savings(month, initialLoanThisMonth.Add(initialInterestThisMonth).Add(miscCostSum))
+
+	totalPaidThisMonth, savingsLeftThisMonth := scenario.Scenario.Overpay.Overpay(month, initialLoanThisMonth.Add(initialInterestThisMonth).Add(miscCostSum), savedThisMonth.Add(totalSaved))
+	paidLoanThisMonth := totalPaidThisMonth.Sub(initialInterestThisMonth).Sub(miscCostSum)
+
+	if paidLoanThisMonth.GreaterThan(remainingLoanToBePaid) {
+		paidLoanThisMonth = remainingLoanToBePaid
+	}
+
+	totalLoanPaid = totalLoanPaid.Add(paidLoanThisMonth)
+	totalInterestPaid = totalInterestPaid.Add(initialInterestThisMonth)
+
+	remainingLoanToBePaid = scenario.Scenario.Loan.Value.Sub(totalLoanPaid)
+
+	overpaid := paidLoanThisMonth.Add(initialInterestThisMonth).Sub(constantRateValue)
+	if overpaid.LessThan(decimal.NewFromInt(0)) {
+		overpaid = decimal.Zero
 	}
 
 	return RateSummary{
