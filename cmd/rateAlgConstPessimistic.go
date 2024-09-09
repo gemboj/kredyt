@@ -59,19 +59,27 @@ func (r RateAlgorithmConstantPessimistic) calculate(month int, scenario Scenario
 		overpaid = decimal.Zero
 	}
 
-	var miscCosts []decimal.Decimal
+	var miscCostsOutputs []MiscCostsOutput
 	for _, miscCost := range scenario.Scenario.MiscCosts {
-		c := miscCost.Calculate(month, scenario)
-		miscCosts = append(miscCosts, c)
+		miscCostOutput := miscCost.Calculate(month, scenario)
+
+		miscCostsOutputs = append(miscCostsOutputs, miscCostOutput)
 	}
 
-	miscCostsTotal := make([]decimal.Decimal, len(miscCosts))
+	miscCostsTotal := make([]decimal.Decimal, len(miscCostsOutputs))
 	if len(scenario.Rates) > 0 && len(scenario.Rates[len(scenario.Rates)-1].MiscCostsTotal) > 0 {
 		miscCostsTotal = scenario.Rates[len(scenario.Rates)-1].MiscCostsTotal
 	}
 
-	for i, miscCost := range miscCosts {
-		miscCostsTotal[i] = miscCostsTotal[i].Add(miscCost)
+	miscCosts := make([]decimal.Decimal, len(miscCostsOutputs))
+	for i, miscCost := range miscCostsOutputs {
+		if !miscCost.TotalOnly {
+			miscCosts[i] = miscCost.Value
+		} else {
+			miscCosts[i] = decimal.Zero
+		}
+
+		miscCostsTotal[i] = miscCostsTotal[i].Add(miscCost.Value)
 	}
 
 	return RateSummary{

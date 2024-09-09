@@ -5,27 +5,35 @@ import (
 )
 
 type MiscCostsAlgorithm interface {
-	Calculate(int, ScenarioSummary) decimal.Decimal
+	Calculate(int, ScenarioSummary) MiscCostsOutput
+}
+
+type MiscCostsOutput struct {
+	Value     decimal.Decimal
+	TotalOnly bool
 }
 
 type MiscCostsFromLoan struct {
 	Percentage decimal.Decimal
 }
 
-func (m MiscCostsFromLoan) Calculate(month int, s ScenarioSummary) decimal.Decimal {
-	return s.Scenario.Loan.Value.Mul(m.Percentage)
+func (m MiscCostsFromLoan) Calculate(month int, s ScenarioSummary) MiscCostsOutput {
+	return MiscCostsOutput{Value: s.Scenario.Loan.Value.Mul(m.Percentage).Round(2)}
 }
 
 type MiscCostsSingle struct {
 	Cost decimal.Decimal
 }
 
-func (m MiscCostsSingle) Calculate(month int, _ ScenarioSummary) decimal.Decimal {
+func (m MiscCostsSingle) Calculate(month int, _ ScenarioSummary) MiscCostsOutput {
 	if month != 0 {
-		return decimal.Zero
+		return MiscCostsOutput{}
 	}
 
-	return m.Cost
+	return MiscCostsOutput{
+		Value:     m.Cost,
+		TotalOnly: true,
+	}
 }
 
 type MiscCostsFromRemainingLoan struct {
@@ -36,7 +44,7 @@ type MiscCostsFromRemainingLoan struct {
 	UpToMonth                     int
 }
 
-func (m MiscCostsFromRemainingLoan) Calculate(month int, s ScenarioSummary) decimal.Decimal {
+func (m MiscCostsFromRemainingLoan) Calculate(month int, s ScenarioSummary) MiscCostsOutput {
 	calculateCostEveryMonth := m.CalculateCostEveryMonth
 	recalculateBaseCostEveryMonth := m.RecalculateBaseCostEveryMonth
 	upToMonth := m.UpToMonth
@@ -54,11 +62,11 @@ func (m MiscCostsFromRemainingLoan) Calculate(month int, s ScenarioSummary) deci
 	}
 
 	if month >= upToMonth {
-		return decimal.Zero
+		return MiscCostsOutput{}
 	}
 
 	if (month+1)%calculateCostEveryMonth != 0 {
-		return decimal.Zero
+		return MiscCostsOutput{}
 	}
 
 	value := s.Scenario.Loan.Value
@@ -75,7 +83,8 @@ func (m MiscCostsFromRemainingLoan) Calculate(month int, s ScenarioSummary) deci
 	}
 
 	cost := value.Mul(m.Percentage)
-	return cost.Round(2)
+
+	return MiscCostsOutput{Value: cost.Round(2)}
 }
 
 type MiscCostsFromMortgage struct {
@@ -85,7 +94,7 @@ type MiscCostsFromMortgage struct {
 	UpToMonth   int
 }
 
-func (m MiscCostsFromMortgage) Calculate(month int, s ScenarioSummary) decimal.Decimal {
+func (m MiscCostsFromMortgage) Calculate(month int, s ScenarioSummary) MiscCostsOutput {
 	monthPeriod := m.MonthPeriod
 	upToMonth := m.UpToMonth
 
@@ -98,12 +107,12 @@ func (m MiscCostsFromMortgage) Calculate(month int, s ScenarioSummary) decimal.D
 	}
 
 	if month >= upToMonth {
-		return decimal.Zero
+		return MiscCostsOutput{}
 	}
 
 	if (month+1)%monthPeriod != 0 {
-		return decimal.Zero
+		return MiscCostsOutput{}
 	}
 
-	return s.Scenario.Loan.Mortgage.Mul(m.Percentage).Round(2)
+	return MiscCostsOutput{Value: s.Scenario.Loan.Mortgage.Mul(m.Percentage).Round(2)}
 }
