@@ -12,10 +12,7 @@ func (r RateAlgorithmConstantPessimistic) String() string {
 func (r RateAlgorithmConstantPessimistic) calculate(month int, scenario ScenarioSummary) RateSummary {
 	interestRate := scenario.Scenario.Loan.FindCurrentInterestRate(month)
 
-	constantRateValue := RateValue{
-		Value:      constRateValue(scenario.Scenario.Loan.Value, interestRate.yearPercent, scenario.Scenario.Loan.Length),
-		SinceMonth: 0,
-	}
+	constantRateValue := constRateValue(scenario.Scenario.Loan.Value, interestRate.yearPercent, scenario.Scenario.Loan.Length)
 
 	remainingLoanToBePaid := scenario.Scenario.Loan.Value
 	totalLoanPaid := decimal.Zero
@@ -30,17 +27,18 @@ func (r RateAlgorithmConstantPessimistic) calculate(month int, scenario Scenario
 		totalSaved = lastRateSummary.SavingsLeftThisMonth
 	}
 
-	if len(scenario.Rates) != 0 && interestRate.sinceMonth > 0 && len(scenario.Rates) >= interestRate.sinceMonth {
-		rateSummaryBeforeInterestRateChange := scenario.Rates[interestRate.sinceMonth-1]
+	if len(scenario.Rates) != 0 {
+		constantRateValue = scenario.Rates[len(scenario.Rates)-1].InitalRate.Total()
 
-		constantRateValue = RateValue{
-			Value:      constRateValue(rateSummaryBeforeInterestRateChange.RemainingLoanToBePaid, interestRate.yearPercent, scenario.Scenario.Loan.Length.AddMonths(-interestRate.sinceMonth)),
-			SinceMonth: interestRate.sinceMonth,
+		if interestRate.sinceMonth > 0 && len(scenario.Rates) == interestRate.sinceMonth {
+			rateSummaryBeforeInterestRateChange := scenario.Rates[interestRate.sinceMonth-1]
+
+			constantRateValue = constRateValue(rateSummaryBeforeInterestRateChange.RemainingLoanToBePaid, interestRate.yearPercent, scenario.Scenario.Loan.Length.AddMonths(-interestRate.sinceMonth))
 		}
 	}
 
 	initialInterestThisMonth := monthInterest(remainingLoanToBePaid, interestRate.yearPercent)
-	initialLoanThisMonth := constantRateValue.Value.Sub(initialInterestThisMonth)
+	initialLoanThisMonth := constantRateValue.Sub(initialInterestThisMonth)
 
 	savedThisMonth := scenario.Scenario.Savings.Savings(month, initialLoanThisMonth, initialInterestThisMonth)
 
@@ -56,7 +54,7 @@ func (r RateAlgorithmConstantPessimistic) calculate(month int, scenario Scenario
 
 	remainingLoanToBePaid = scenario.Scenario.Loan.Value.Sub(totalLoanPaid)
 
-	overpaid := paidLoanThisMonth.Add(initialInterestThisMonth).Sub(constantRateValue.Value)
+	overpaid := paidLoanThisMonth.Add(initialInterestThisMonth).Sub(constantRateValue)
 	if overpaid.LessThan(decimal.NewFromInt(0)) {
 		overpaid = decimal.Zero
 	}
@@ -106,6 +104,5 @@ func monthInterest(totalCreditLeft, yearPercent decimal.Decimal) decimal.Decimal
 }
 
 type RateValue struct {
-	Value      decimal.Decimal
-	SinceMonth int
+	Value decimal.Decimal
 }
