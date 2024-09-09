@@ -29,8 +29,6 @@ func (r RateAlgorithmDecreasing) calculate(month int, scenario ScenarioSummary) 
 	initialLoanThisMonth := scenario.Scenario.Loan.CalculateConstLoan()
 	initialInterestThisMonth := remainingLoanToBePaid.Mul(interestRate.MonthPercent())
 
-	savedThisMonth := scenario.Scenario.Savings.Savings(month, initialLoanThisMonth.Add(initialInterestThisMonth))
-
 	var miscCostsOutputs []MiscCostsOutput
 	for _, miscCost := range scenario.Scenario.MiscCosts {
 		miscCostOutput := miscCost.Calculate(month, scenario)
@@ -55,6 +53,8 @@ func (r RateAlgorithmDecreasing) calculate(month int, scenario ScenarioSummary) 
 	}
 
 	miscCostSum := sum(miscCosts...)
+
+	savedThisMonth := scenario.Scenario.Savings.Savings(month, initialLoanThisMonth.Add(initialInterestThisMonth).Add(miscCostSum))
 
 	totalPaidThisMonth, savingsLeftThisMonth := scenario.Scenario.Overpay.Overpay(month, initialLoanThisMonth.Add(initialInterestThisMonth).Add(miscCostSum), savedThisMonth.Add(totalSaved))
 	paidLoanThisMonth := totalPaidThisMonth.Sub(initialInterestThisMonth).Sub(miscCostSum)
