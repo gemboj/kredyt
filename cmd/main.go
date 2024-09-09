@@ -24,10 +24,11 @@ var (
 	baselineLoan = Loan{
 		Mortgage: decimal.NewFromInt(930_000),
 		Value:    decimal.NewFromInt(330_000),
-		Length:   NewLoanLengthFromMonths(180),
+		Length:   NewLoanLengthFromYears(15),
 	}
 
 	baselineAlgorithm = RateAlgorithmConstantPessimistic{}
+	baselineSavings   = SavingsFlatTotal{Value: decimal.NewFromInt(5000)}
 
 	loanBaselineVelo = Loan{
 		Mortgage: baselineLoan.Mortgage,
@@ -107,11 +108,11 @@ func main() {
 		},
 		findOptimalOverpayScenarioWithCommision(
 			Scenario{
-				Name:          "Velo optimal overpay 5000",
+				Name:          fmt.Sprintf("Velo optimal overpay %v", baselineSavings.Value),
 				Loan:          loanBaselineVelo,
 				RateAlgorithm: baselineAlgorithm,
 				Overpay:       Overpay{Commission: decimal.NewFromInt(200)},
-				Savings:       SavingsFlatTotal{Value: decimal.NewFromInt(5000)},
+				Savings:       baselineSavings,
 				MiscCosts:     miscCostsBaselineVelo,
 			},
 		).Scenario,
@@ -124,11 +125,11 @@ func main() {
 			MiscCosts:     miscCostsBaselineING,
 		},
 		{
-			Name:          "ING overpay 5000",
+			Name:          fmt.Sprintf("ING overpay %v", baselineSavings.Value),
 			Loan:          loanBaselineING,
 			RateAlgorithm: baselineAlgorithm,
 			Overpay:       Overpay{},
-			Savings:       SavingsFlatTotal{Value: decimal.NewFromInt(5000)},
+			Savings:       baselineSavings,
 			MiscCosts:     miscCostsBaselineING,
 		},
 		{
@@ -140,11 +141,11 @@ func main() {
 			MiscCosts:     miscCostsBaselinemBank,
 		},
 		{
-			Name:          "mBank overpay 5000",
+			Name:          fmt.Sprintf("mBank overpay %v", baselineSavings.Value),
 			Loan:          loanBaselinemBank,
 			RateAlgorithm: baselineAlgorithm,
 			Overpay:       Overpay{},
-			Savings:       SavingsFlatTotal{Value: decimal.NewFromInt(5000)},
+			Savings:       baselineSavings,
 			MiscCosts:     miscCostsBaselinemBank,
 		},
 	}
